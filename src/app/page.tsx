@@ -60,6 +60,8 @@ import {
   ChevronRight,
   Sparkle,
   MapPin as MapPinIcon,
+  GitCompare,
+  HelpCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -231,6 +233,7 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -303,7 +306,7 @@ export default function Home() {
     } catch {}
   }, [submitEstimate])
 
-  // Keyboard shortcuts: "/" focuses search, "Esc" clears search
+  // Keyboard shortcuts: "/" focuses search, "Esc" clears search, "?" shows help
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       // Only when not typing in an input/textarea
@@ -314,9 +317,13 @@ export default function Home() {
         target.isContentEditable ||
         target.getAttribute('role') === 'combobox'
       if (isTyping) {
-        if (e.key === 'Escape' && searchInputRef.current) {
-          searchInputRef.current.focus()
-          searchInputRef.current.select()
+        if (e.key === 'Escape') {
+          if (showShortcutHelp) {
+            setShowShortcutHelp(false)
+          } else if (searchInputRef.current) {
+            searchInputRef.current.focus()
+            searchInputRef.current.select()
+          }
         }
         return
       }
@@ -324,11 +331,16 @@ export default function Home() {
         e.preventDefault()
         searchInputRef.current.focus()
         searchInputRef.current.select()
+      } else if (e.key === '?') {
+        e.preventDefault()
+        setShowShortcutHelp((v) => !v)
+      } else if (e.key === 'Escape' && showShortcutHelp) {
+        setShowShortcutHelp(false)
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [showShortcutHelp])
 
   // Sync form state to URL (no history spam — replace current entry).
   // Only update URL AFTER user interaction to avoid overwriting URL params that
@@ -608,6 +620,15 @@ export default function Home() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="راهنمای میانبرهای صفحه‌کلید"
+              title="راهنمای میانبرها (?)"
+              onClick={() => setShowShortcutHelp((v) => !v)}
+            >
+              <HelpCircle className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </header>
@@ -987,6 +1008,62 @@ export default function Home() {
         </section>
       </main>
 
+      {/* Keyboard shortcut help dialog */}
+      <AnimatePresence>
+        {showShortcutHelp && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onClick={() => setShowShortcutHelp(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-card border border-border/60 rounded-xl shadow-2xl max-w-md w-full p-5"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-labelledby="shortcut-help-title"
+              aria-modal="true"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 id="shortcut-help-title" className="text-base font-bold flex items-center gap-2">
+                  <Keyboard className="w-4 h-4 text-emerald-500" />
+                  میانبرهای صفحه‌کلید
+                </h3>
+                <Button variant="ghost" size="icon" aria-label="بستن" onClick={() => setShowShortcutHelp(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between py-1.5 border-b border-border/40">
+                  <span className="text-sm text-muted-foreground">تمرکز روی جستجو</span>
+                  <kbd className="font-mono text-xs bg-muted/40 border border-border/60 rounded px-2 py-1">/</kbd>
+                </div>
+                <div className="flex items-center justify-between py-1.5 border-b border-border/40">
+                  <span className="text-sm text-muted-foreground">نمایش/پنهان این راهنما</span>
+                  <kbd className="font-mono text-xs bg-muted/40 border border-border/60 rounded px-2 py-1">?</kbd>
+                </div>
+                <div className="flex items-center justify-between py-1.5 border-b border-border/40">
+                  <span className="text-sm text-muted-foreground">بستن پنجره/بازگشت به جستجو</span>
+                  <kbd className="font-mono text-xs bg-muted/40 border border-border/60 rounded px-2 py-1">Esc</kbd>
+                </div>
+                <div className="flex items-center justify-between py-1.5 border-b border-border/40">
+                  <span className="text-sm text-muted-foreground">ارسال فرم تخمین</span>
+                  <kbd className="font-mono text-xs bg-muted/40 border border-border/60 rounded px-2 py-1">Enter</kbd>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4 leading-5">
+                میانبرها فقط زمانی که در حال تایپ در یک فیلد متنی نیستید کار می‌کنند (به جز Esc که همیشه کار می‌کند).
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <Footer />
     </div>
   )
@@ -1107,9 +1184,12 @@ function ResultView({
   const [uniTypeFilter, setUniTypeFilter] = useState<Set<UniversityType>>(new Set())
   const [minChance, setMinChance] = useState(0)
   const [cityFilter, setCityFilter] = useState<string>('') // '' = all cities
-  const [view, setView] = useState<'tabs' | 'all' | 'chart' | 'priority'>('tabs')
+  const [view, setView] = useState<'tabs' | 'all' | 'chart' | 'priority' | 'compare'>('tabs')
   const [sortBy, setSortBy] = useState<'chance' | 'cutoff-asc' | 'cutoff-desc' | 'major' | 'university'>('chance')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [compareRank, setCompareRank] = useState<string>('')
+  const [compareResult, setCompareResult] = useState<EstimateResult | null>(null)
+  const [compareLoading, setCompareLoading] = useState(false)
 
   // Combined filtered list (must be declared before availableCities which depends on it)
   const allRows = useMemo(() => {
@@ -1260,6 +1340,35 @@ function ResultView({
     setUniTypeFilter(new Set())
     setMinChance(0)
     setCityFilter('')
+  }
+
+  async function runCompare() {
+    const r = parseInt(compareRank, 10)
+    if (!r || r <= 0) {
+      toast.error('رتبه مقایسه نامعتبر است')
+      return
+    }
+    setCompareLoading(true)
+    try {
+      const res = await fetch('/api/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group, quota, rank: r }),
+      })
+      const data: ApiResponse = await res.json()
+      if (!data.ok || !data.result) {
+        toast.error(data.error || 'خطا در مقایسه')
+        setCompareResult(null)
+      } else {
+        setCompareResult(data.result)
+        toast.success(`مقایسه با رتبه ${faFmt(r)} انجام شد`)
+      }
+    } catch {
+      toast.error('ارتباط با سرور برقرار نشد')
+      setCompareResult(null)
+    } finally {
+      setCompareLoading(false)
+    }
   }
 
   return (
@@ -1576,6 +1685,16 @@ function ResultView({
               >
                 <Wand2 className="w-4 h-4" />
               </Button>
+              <Button
+                variant={view === 'compare' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setView('compare')}
+                className="h-9 px-2"
+                aria-label="مقایسه رتبه‌ها"
+                title="مقایسه رتبه‌ها"
+              >
+                <GitCompare className="w-4 h-4" />
+              </Button>
             </div>
           </div>
 
@@ -1616,6 +1735,15 @@ function ResultView({
               aria-label="لیست اولویت پیشنهادی"
             >
               <Wand2 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={view === 'compare' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('compare')}
+              className="h-9 px-2 flex-1"
+              aria-label="مقایسه رتبه‌ها"
+            >
+              <GitCompare className="w-4 h-4" />
             </Button>
           </div>
 
@@ -1920,7 +2048,189 @@ function ResultView({
           onCopy={onCopyPriorityList}
         />
       )}
+
+      {view === 'compare' && (
+        <CompareView
+          result={result}
+          compareRank={compareRank}
+          setCompareRank={setCompareRank}
+          runCompare={runCompare}
+          compareResult={compareResult}
+          compareLoading={compareLoading}
+          groupInfo={groupInfo}
+          quotaInfo={quotaInfo}
+        />
+      )}
     </div>
+  )
+}
+
+function CompareView({
+  result,
+  compareRank,
+  setCompareRank,
+  runCompare,
+  compareResult,
+  compareLoading,
+  groupInfo,
+  quotaInfo,
+}: {
+  result: EstimateResult
+  compareRank: string
+  setCompareRank: (v: string) => void
+  runCompare: () => void
+  compareResult: EstimateResult | null
+  compareLoading: boolean
+  groupInfo: { key: GroupKey; label: string; emoji: string; color: string }
+  quotaInfo: { key: QuotaKey; label: string; description: string }
+}) {
+  const baseStats = useMemo(() => computeDetailedStats(result), [result])
+  const compareStats = useMemo(
+    () => (compareResult ? computeDetailedStats(compareResult) : null),
+    [compareResult]
+  )
+
+  const metrics = [
+    { key: 'reachableCount', label: 'انتخاب در دسترس', betterIsHigher: true },
+    { key: 'outOfReachCount', label: 'خارج از دسترس', betterIsHigher: false },
+    { key: 'averageChance', label: 'میانگین شانس', betterIsHigher: true },
+    { key: 'userPercentile', label: 'صدک شما', betterIsHigher: false },
+    { key: 'meanCutoff', label: 'میانگین رتبه', betterIsHigher: false },
+    { key: 'medianCutoff', label: 'میانه رتبه', betterIsHigher: false },
+  ] as const
+
+  function getVal(s: DetailedStats, key: string): number {
+    // @ts-expect-error dynamic access for display purposes
+    return s[key] as number
+  }
+
+  return (
+    <Card className="border-border/60">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <GitCompare className="w-4 h-4 text-emerald-500" />
+          مقایسه رتبه‌ها
+        </CardTitle>
+        <CardDescription>
+          رتبه فعلی شما را با یک رتبه دیگر مقایسه کنید تا تأثیر آن بر گزینه‌ها را ببینید.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Compare input form */}
+        <div className="flex flex-wrap items-end gap-2 p-3 rounded-lg border border-border/60 bg-background/50">
+          <div className="flex-1 min-w-[180px] space-y-1.5">
+            <Label htmlFor="compareRank" className="text-xs text-muted-foreground">
+              رتبه برای مقایسه (همان گروه و سهمیه)
+            </Label>
+            <Input
+              id="compareRank"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              placeholder="مثلاً ۵۰۰۰"
+              value={compareRank}
+              onChange={(e) => setCompareRank(e.target.value)}
+              className="font-mono h-9"
+              aria-label="رتبه برای مقایسه"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  runCompare()
+                }
+              }}
+            />
+          </div>
+          <Button onClick={runCompare} disabled={compareLoading} className="h-9">
+            {compareLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitCompare className="w-4 h-4" />}
+            مقایسه
+          </Button>
+          {compareRank && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9"
+              onClick={() => {
+                setCompareRank('')
+                // compareResult is managed by parent; we can't clear it here directly
+              }}
+            >
+              <X className="w-4 h-4" /> پاک
+            </Button>
+          )}
+        </div>
+
+        {/* Side-by-side metrics comparison */}
+        {compareResult && compareStats ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border/60">
+                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">معیار</th>
+                  <th className="text-center py-2 px-3 min-w-[120px]">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[11px] text-muted-foreground">رتبه فعلی شما</span>
+                      <span className="font-bold text-base">{faFmt(result.rank)}</span>
+                    </div>
+                  </th>
+                  <th className="text-center py-2 px-3 min-w-[120px]">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[11px] text-muted-foreground">رتبه مقایسه</span>
+                      <span className="font-bold text-base">{faFmt(compareResult.rank)}</span>
+                    </div>
+                  </th>
+                  <th className="text-center py-2 px-2 text-xs text-muted-foreground font-medium">تفاوت</th>
+                </tr>
+              </thead>
+              <tbody>
+                {metrics.map((m) => {
+                  const v1 = getVal(baseStats, m.key)
+                  const v2 = getVal(compareStats, m.key)
+                  const diff = v2 - v1
+                  const isBetter = m.betterIsHigher ? diff > 0 : diff < 0
+                  const isWorse = m.betterIsHigher ? diff < 0 : diff > 0
+                  const diffColor = isBetter
+                    ? 'text-emerald-500'
+                    : isWorse
+                      ? 'text-rose-500'
+                      : 'text-muted-foreground'
+                  const diffSign = diff > 0 ? '+' : ''
+                  const fmtVal = (n: number) => m.key.includes('Chance') || m.key.includes('Percentile') ? `${fa(n)}٪` : faFmt(n)
+                  return (
+                    <tr key={m.key} className="border-b border-border/40 hover:bg-foreground/[0.02]">
+                      <td className="py-2 px-2 text-xs text-muted-foreground">{m.label}</td>
+                      <td className="text-center py-2 px-3 font-mono font-bold tabular-nums">{fmtVal(v1)}</td>
+                      <td className="text-center py-2 px-3 font-mono font-bold tabular-nums">{fmtVal(v2)}</td>
+                      <td className={cn('text-center py-2 px-2 font-mono text-xs font-bold tabular-nums', diffColor)}>
+                        {diff === 0 ? '—' : `${diffSign}${fa(Math.abs(diff))}${m.key.includes('Chance') || m.key.includes('Percentile') ? '٪' : ''}`}
+                      </td>
+                    </tr>
+                  )
+                })}
+                {/* Tier row */}
+                <tr className="border-b border-border/40 hover:bg-foreground/[0.02]">
+                  <td className="py-2 px-2 text-xs text-muted-foreground">طبقه‌بندی</td>
+                  <td className="text-center py-2 px-3">
+                    <Badge variant="outline" className="text-[10px] px-2 py-0.5">{baseStats.tierLabel}</Badge>
+                  </td>
+                  <td className="text-center py-2 px-3">
+                    <Badge variant="outline" className="text-[10px] px-2 py-0.5">{compareStats.tierLabel}</Badge>
+                  </td>
+                  <td className="text-center py-2 px-2 text-xs text-muted-foreground">—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-sm text-muted-foreground">
+            <GitCompare className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            یک رتبه دیگر وارد کنید و دکمه «مقایسه» را بزنید تا تأثیر آن بر شانس قبولی شما نشان داده شود.
+            <p className="text-xs mt-2">
+              {groupInfo.emoji} {groupInfo.label} — {quotaInfo.label}
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

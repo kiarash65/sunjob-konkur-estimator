@@ -523,3 +523,85 @@ Stage Summary:
 - Two new features ported to downloadable HTML: city filter, collapsible statistics card with full stats computation.
 - ESLint clean; dev server stable; no runtime errors.
 - Downloadable HTML now has feature parity for: rank estimation, filter/search/sort (including city), favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts, charts, AND now collapsible stats card.
+
+---
+Task ID: 7
+Agent: cron-review (webDevReview)
+Task: QA pass + new features (comparison view, keyboard help dialog, offline quick-start + theme toggle)
+
+## Current project status description/assessment
+The project was feature-complete after Task 6 with: rank estimator, filter/search/sort (including city), favorites, history, chart view, print/PDF, keyboard shortcuts, deep-link sharing, downloadable offline HTML with CSV/JSON/priority-list/favorites/charts/city-filter/collapsible-stats-card features. ESLint clean, no runtime errors. The recommended next-phase work items from Task 6 were:
+- PWA / offline support for main page.
+- Real Sanjesh data.
+- Sort dropdown SSR quirk.
+- Quick-start examples could be added to the downloadable HTML.
+- Theme toggle in downloadable HTML — currently hardcoded to dark.
+
+## QA findings (via agent-browser + curl)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Downloadable HTML works offline (38 results, all features present).
+- All previously-added features verified working.
+- ESLint passes; no runtime errors in dev.log.
+
+## Bugs found & fixed
+1. **showShortcutHelp state in wrong component** — initially declared `showShortcutHelp` in `ResultView`, but the keyboard handler `useEffect` lives in `Home`. This caused a `ReferenceError: showShortcutHelp is not defined` at page load, resulting in an "Application error" page. Fixed by moving the state declaration from `ResultView` to `Home` (alongside `mounted`, `showFavs`, etc.).
+
+## New features added (Main App)
+1. **Comparison view** (`CompareView` component, 5th view mode):
+   - New view mode `'compare'` added to the view state union.
+   - Input field for a second rank (same group + quota), "مقایسه" button, "پاک" button.
+   - Enter key in the input triggers compare.
+   - Fetches the comparison estimate via POST /api/estimate.
+   - Renders a side-by-side table comparing 6 metrics (reachableCount, outOfReachCount, averageChance, userPercentile, meanCutoff, medianCutoff) + tier row.
+   - Each metric row shows: label, current value, compare value, diff (with +/− sign and color: green=better, red=worse, gray=same).
+   - Percent values show ٪ suffix; rank values use faFmt.
+   - Loading state via `compareLoading` (spinner).
+   - Toast notifications for success/error.
+   - Empty state with icon and instructions when no comparison has been run.
+   - New `GitCompare` icon button in both desktop and mobile view switchers.
+2. **Keyboard shortcut help dialog** (`?` shortcut):
+   - New `HelpCircle` icon button in the header (next to theme toggle).
+   - Pressing `?` (when not typing in an input) toggles a modal dialog.
+   - Dialog shows 4 shortcuts: `/` (focus search), `?` (toggle this help), `Esc` (close/return to search), `Enter` (submit form).
+   - Each shortcut shown as a `<kbd>` element.
+   - AnimatePresence handles enter/exit animations (fade + scale spring).
+   - Click outside or Esc closes the dialog.
+   - `role="dialog"`, `aria-modal="true"`, `aria-labelledby` for accessibility.
+
+## New features ported to downloadable HTML
+1. **Quick-start example buttons** — 4 clickable cards in a 2-column grid below the form:
+   - ریاضی/منطقه ۱/رتبه ۱۵۰۰, تجربی/منطقه ۳/رتبه ۸۰۰۰, انسانی/منطقه ۲/رتبه ۴۰۰۰, هنر/منطقه ۱/رتبه ۳۰۰۰.
+   - Each shows emoji + label + description.
+   - Hover effect: emerald border + tinted background.
+   - Clicking fills the form (group/quota/rank) and dispatches a submit event.
+2. **Theme toggle (light/dark)** — `#themeBtn` button in the header:
+   - Cycles between dark (🌙/تاریک) and light (☀️/روشن).
+   - Persists choice in localStorage under key `konkur-theme`.
+   - Light theme CSS variables override the dark defaults via `html[data-theme="light"]` selector.
+   - Light theme: white background, dark text, lighter borders, softer shadows.
+   - Toast notification confirms the theme change.
+   - Defaults to dark (matches the original offline HTML design).
+
+## Verification (final)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Help dialog: clicking HelpCircle button opens dialog with title "میانبرهای صفحه‌کلید" and 5 kbd elements; pressing `?` also opens it; Esc closes it.
+- Compare view: clicking GitCompare button shows the compare form; filling rank "5000" and clicking "مقایسه" renders a 7-row table (6 metrics + tier) with first row "انتخاب در دسترس: ۴۲ vs ۳۲ vs ۱۰".
+- Downloadable HTML: 120KB (was 114KB), all new features present.
+- Offline quick-start: 4 buttons visible; clicking "ریاضی — منطقه ۱ — رتبه ۱۵۰۰" fills form + submits → 43 optimistic rows.
+- Offline theme toggle: initial dark (🌙/تاریک); clicking changes to light (☀️/روشن) and persists to localStorage; CSS variables switch correctly.
+- ESLint passes with zero errors/warnings.
+- No runtime errors in /home/z/my-project/dev.log (after fixing the showShortcutHelp bug).
+
+## Unresolved issues or risks, and priority recommendations for the next phase
+- **PWA / offline support** for main page — could add a service worker + manifest.json to make the main page itself work offline (currently only the downloadable HTML is offline-capable).
+- **Real Sanjesh data** — current dataset uses estimated cutoffs; real past-year admission data should be ingested.
+- **Sort dropdown SSR quirk** — still mitigated with the `key={mounted}` remount trick.
+- **Comparison view** could be ported to the downloadable HTML (currently only in main app).
+- **Row click → expand** for more details (cutoff history, tips) — not yet implemented.
+
+Stage Summary:
+- QA pass complete: 1 bug found (showShortcutHelp state in wrong component) and fixed.
+- Two new feature groups added to the main app: Comparison view (side-by-side metrics table), Keyboard shortcut help dialog (?).
+- Two new features ported to downloadable HTML: Quick-start example buttons, Theme toggle (light/dark with localStorage).
+- ESLint clean; dev server stable; no runtime errors.
+- Downloadable HTML now has feature parity for: rank estimation, filter/search/sort (including city), favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts, charts, collapsible stats card, quick-start examples, AND now theme toggle.

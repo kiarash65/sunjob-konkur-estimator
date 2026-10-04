@@ -67,6 +67,28 @@ export async function GET(req: NextRequest) {
     --shadow: 0 10px 30px -10px rgba(0,0,0,.6);
     --radius: 16px;
   }
+  /* Light theme overrides */
+  html[data-theme="light"] {
+    --bg: #f8fafc;
+    --bg-soft: #f1f5f9;
+    --card: #ffffff;
+    --card-2: #f8fafc;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --text-soft: #475569;
+    --muted: #64748b;
+    --shadow: 0 10px 30px -10px rgba(0,0,0,.15);
+  }
+  html[data-theme="light"] body {
+    background:
+      radial-gradient(1200px 700px at 10% -10%, rgba(16,185,129,.12), transparent 60%),
+      radial-gradient(1000px 600px at 100% 0%, rgba(99,102,241,.12), transparent 60%),
+      var(--bg);
+  }
+  html[data-theme="light"] .bucket .head,
+  html[data-theme="light"] .card {
+    background: var(--card);
+  }
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
@@ -329,11 +351,15 @@ export async function GET(req: NextRequest) {
     <span class="pill">● نرم افزار رایگان تخمین رشته قبولی</span>
     <h1>تخمین رشته قبولی با رتبه کنکور ۱۴۰۵</h1>
     <p class="sub">با انتخاب گروه آزمایشی، سهمیه (منطقه) و رتبه در سهمیه خود، فهرستی از رشته‌محل‌های پیشنهادی را در سه دسته خوش‌بینانه، منطقی و بدبینانه مشاهده کنید. داده‌ها بر اساس کارنامه قبولی سال گذشته با خطای تخمینی کمتر از ۵٪ است.</p>
-    <div style="display:flex; justify-content:center; margin-top: 16px;">
+    <div style="display:flex; justify-content:center; gap:8px; margin-top: 16px; flex-wrap:wrap;">
       <button id="favBtn" type="button" class="btn secondary" style="position:relative; padding: 8px 16px; font-size: 13px;" aria-label="علاقه‌مندی‌ها">
         <span class="heart-icon">♡</span>
         <span style="margin-right:6px;">علاقه‌مندی‌ها</span>
         <span id="favCount" style="display:none; background:#ef4444; color:#fff; font-size:10px; font-weight:700; min-width:18px; height:18px; line-height:18px; border-radius:9px; padding:0 5px; text-align:center; margin-right:6px;"></span>
+      </button>
+      <button id="themeBtn" type="button" class="btn secondary" style="padding: 8px 16px; font-size: 13px;" aria-label="تغییر تم" title="تغییر تم (روشن/تاریک)">
+        <span id="themeIcon">🌙</span>
+        <span style="margin-right:6px;" id="themeLabel">تاریک</span>
       </button>
     </div>
   </header>
@@ -373,6 +399,12 @@ export async function GET(req: NextRequest) {
         </div>
         <div class="full"><div id="errBox" class="error" style="display:none"></div></div>
       </form>
+
+      <!-- Quick-start examples -->
+      <div style="margin-top: 14px;">
+        <p class="muted" style="font-size: 12px; margin: 0 0 8px;">🚀 شروع سریع با نمونه‌ها:</p>
+        <div id="quickStartGrid" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 6px;"></div>
+      </div>
     </section>
 
     <section id="resultArea" style="display:none">
@@ -1019,8 +1051,90 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
   // Load favorites from localStorage on init
   loadFavorites();
 
+  // ───── Theme toggle (light/dark, persisted in localStorage) ─────
+  var THEME_KEY = 'konkur-theme';
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    var icon = document.getElementById('themeIcon');
+    var label = document.getElementById('themeLabel');
+    if (theme === 'light') {
+      if (icon) icon.textContent = '☀️';
+      if (label) label.textContent = 'روشن';
+    } else {
+      if (icon) icon.textContent = '🌙';
+      if (label) label.textContent = 'تاریک';
+    }
+  }
+  function loadTheme() {
+    try {
+      var t = localStorage.getItem(THEME_KEY);
+      // Default to dark for the offline HTML (matches the original design)
+      applyTheme(t === 'light' ? 'light' : 'dark');
+    } catch (e) {
+      applyTheme('dark');
+    }
+  }
+  function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme') || 'dark';
+    var next = current === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    toast(next === 'light' ? '☀️ تم روشن فعال شد' : '🌙 تم تاریک فعال شد');
+  }
+  loadTheme();
+  document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+
   // Setup stats card collapse toggle
   setupStatsCardToggle();
+
+  // ───── Quick-start example buttons ─────
+  function renderQuickStartButtons() {
+    var grid = document.getElementById('quickStartGrid');
+    if (!grid) return;
+    var examples = [
+      { g: 'riazi', q: 'region1', r: 1500, label: 'ریاضی — منطقه ۱ — رتبه ۱۵۰۰', emoji: '📐', desc: 'رتبه متوسط رو به بالا' },
+      { g: 'tajrobi', q: 'region3', r: 8000, label: 'تجربی — منطقه ۳ — رتبه ۸۰۰۰', emoji: '🔬', desc: 'منطقه روستایی' },
+      { g: 'ensani', q: 'region2', r: 4000, label: 'انسانی — منطقه ۲ — رتبه ۴۰۰۰', emoji: '📜', desc: 'مراکز استان' },
+      { g: 'honar', q: 'region1', r: 3000, label: 'هنر — منطقه ۱ — رتبه ۳۰۰۰', emoji: '🎨', desc: 'کلان‌شهرها' }
+    ];
+    var html = '';
+    examples.forEach(function (ex) {
+      html += ''
+        + '<button type="button" class="quickstart-btn" data-g="' + ex.g + '" data-q="' + ex.q + '" data-r="' + ex.r + '" '
+        + 'style="display:flex; align-items:center; gap:6px; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,0.03); cursor:pointer; text-align:right; transition:all 0.15s; font:inherit; color:var(--text);" '
+        + 'aria-label="شروع سریع با ' + ex.label + '">'
+        + '<span style="font-size:16px; flex-shrink:0;">' + ex.emoji + '</span>'
+        + '<div style="flex:1; min-width:0;">'
+        + '<div style="font-size:11px; font-weight:700; line-height:1.4;">' + ex.label + '</div>'
+        + '<div style="font-size:10px; color:var(--muted);">' + ex.desc + '</div>'
+        + '</div></button>';
+    });
+    grid.innerHTML = html;
+    var btns = grid.querySelectorAll('.quickstart-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener('click', function (e) {
+        var btn = e.currentTarget;
+        var g = btn.getAttribute('data-g');
+        var q = btn.getAttribute('data-q');
+        var r = parseInt(btn.getAttribute('data-r'), 10);
+        document.getElementById('groupSel').value = g;
+        document.getElementById('quotaSel').value = q;
+        document.getElementById('rankInput').value = r;
+        // Submit the form
+        var evt = new Event('submit', { bubbles: true, cancelable: true });
+        document.getElementById('estForm').dispatchEvent(evt);
+      });
+      btns[i].addEventListener('mouseenter', function (e) {
+        e.currentTarget.style.borderColor = 'rgba(16,185,129,0.4)';
+        e.currentTarget.style.background = 'rgba(16,185,129,0.05)';
+      });
+      btns[i].addEventListener('mouseleave', function (e) {
+        e.currentTarget.style.borderColor = 'var(--border)';
+        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+      });
+    }
+  }
+  renderQuickStartButtons();
 
   document.getElementById('favBtn').addEventListener('click', function () {
     var panel = document.getElementById('favPanel');
