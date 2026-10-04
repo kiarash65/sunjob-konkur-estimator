@@ -22,10 +22,12 @@ function jsonSafe(obj: unknown): string {
 
 export async function GET(req: NextRequest) {
   // Optional preselect: pass ?group=tajrobi&quota=region1&rank=1200 to pre-fill
+  // Also accepts short form ?g=tajrobi&q=region1&r=1200 (used by the main page's
+  // share URL).
   const url = new URL(req.url);
-  const group = url.searchParams.get("group");
-  const quota = url.searchParams.get("quota");
-  const rank = url.searchParams.get("rank");
+  const group = url.searchParams.get("group") ?? url.searchParams.get("g");
+  const quota = url.searchParams.get("quota") ?? url.searchParams.get("q");
+  const rank = url.searchParams.get("rank") ?? url.searchParams.get("r");
 
   const groups = GROUPS;
   const quotas = QUOTAS;

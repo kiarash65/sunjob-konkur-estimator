@@ -1,6 +1,18 @@
 'use client'
 
-import { useState, useRef, type FormEvent } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback, type FormEvent } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RTooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie,
+} from 'recharts'
 import {
   Calculator,
   Download,
@@ -19,6 +31,19 @@ import {
   Sun,
   Github,
   Share2,
+  Search,
+  Filter,
+  Heart,
+  Star,
+  X,
+  LayoutGrid,
+  List,
+  RotateCcw,
+  Bookmark,
+  ChevronDown,
+  ChevronUp,
+  Table as TableIcon,
+  PieChart as PieIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,6 +72,15 @@ import {
 } from '@/components/ui/accordion'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import { Switch } from '@/components/ui/switch'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import {
@@ -55,6 +89,7 @@ import {
   UNIVERSITY_TYPE_LABEL,
   type GroupKey,
   type QuotaKey,
+  type UniversityType,
   type EstimateResult,
   type EstimatedRow,
   toPersianDigits,
@@ -72,6 +107,45 @@ function faFmt(n: number | null | undefined): string {
   return fa(String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','))
 }
 
+const STORAGE_FAV_KEY = 'konkur-favorites'
+
+type FavItem = {
+  key: string
+  major: string
+  university: string
+  city: string
+  universityType: UniversityType
+  cutoff: number
+  chance: number
+  group: GroupKey
+  quota: QuotaKey
+  rank: number
+  savedAt: number
+}
+
+function rowKey(r: EstimatedRow, group: GroupKey, quota: QuotaKey): string {
+  return `${group}:${quota}:${r.major}::${r.university}`
+}
+
+function loadFavs(): FavItem[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(STORAGE_FAV_KEY)
+    return raw ? (JSON.parse(raw) as FavItem[]) : []
+  } catch {
+    return []
+  }
+}
+
+function saveFavs(items: FavItem[]) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(STORAGE_FAV_KEY, JSON.stringify(items))
+  } catch {}
+}
+
+const UNI_TYPES_LIST = Object.keys(UNIVERSITY_TYPE_LABEL) as UniversityType[]
+
 export default function Home() {
   const { theme, setTheme } = useTheme()
   const [group, setGroup] = useState<GroupKey>('riazi')
@@ -81,38 +155,86 @@ export default function Home() {
   const [error, setError] = useState('')
   const [result, setResult] = useState<EstimateResult | null>(null)
   const [downloading, setDownloading] = useState(false)
+  const [shareToast, setShareToast] = useState('')
+  const [favs, setFavs] = useState<FavItem[]>([])
+  const [showFavs, setShowFavs] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
+
+  const submitEstimate = useCallback(
+    async (g: GroupKey, q: QuotaKey, rank: number) => {
+      setError('')
+      setLoading(true)
+      setResult(null)
+      try {
+        const res = await fetch('/api/estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ group: g, quota: q, rank }),
+        })
+        const data: ApiResponse = await res.json()
+        if (!data.ok || !data.result) {
+          setError(data.error || 'خطای ناشناخته رخ داد.')
+        } else {
+          setResult(data.result)
+          setTimeout(() => {
+            resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }, 100)
+        }
+      } catch (err) {
+        setError('ارتباط با سرور برقرار نشد.')
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
+
+  // Hydrate from URL and localStorage on mount
+  useEffect(() => {
+    setMounted(true)
+    setFavs(loadFavs())
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const g = params.get('g') as GroupKey | null
+      const q = params.get('q') as QuotaKey | null
+      const r = params.get('r')
+      const auto = params.get('auto') === '1'
+      if (g && GROUPS.some((x) => x.key === g)) setGroup(g)
+      if (q && QUOTAS.some((x) => x.key === q)) setQuota(q)
+      if (r && /^\d+$/.test(r)) setRankInput(r)
+      if (auto && r) {
+        // auto-submit if requested by URL
+        setTimeout(() => submitEstimate(g || 'riazi', q || 'region1', parseInt(r, 10)), 300)
+      }
+    } catch {}
+  }, [submitEstimate])
+
+  // Sync form state to URL (no history spam — replace current entry).
+  // Only update URL AFTER user interaction to avoid overwriting URL params that
+  // hydrate may have just consumed. Track whether any of the form fields has been
+  // touched by user input (set in the onChange handlers).
+  const [userTouched, setUserTouched] = useState(false)
+  useEffect(() => {
+    if (!mounted || !userTouched) return
+    const params = new URLSearchParams()
+    if (group) params.set('g', group)
+    if (quota) params.set('q', quota)
+    if (rankInput) params.set('r', rankInput)
+    const qs = params.toString()
+    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+    window.history.replaceState(null, '', newUrl)
+  }, [group, quota, rankInput, mounted, userTouched])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
     const rank = parseInt(rankInput, 10)
     if (!rank || rank <= 0 || rank > 2_000_000) {
-      setError('لطفاً یک رتبه معتبر وارد کنید (عدد مثبت).')
+      setError('لطفاً یک رتبه معتبار وارد کنید (عدد مثبت).')
       return
     }
-    setLoading(true)
-    setResult(null)
-    try {
-      const res = await fetch('/api/estimate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ group, quota, rank }),
-      })
-      const data: ApiResponse = await res.json()
-      if (!data.ok || !data.result) {
-        setError(data.error || 'خطای ناشناخته رخ داد.')
-      } else {
-        setResult(data.result)
-        setTimeout(() => {
-          resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }, 100)
-      }
-    } catch (err) {
-      setError('ارتباط با سرور برقرار نشد.')
-    } finally {
-      setLoading(false)
-    }
+    await submitEstimate(group, quota, rank)
   }
 
   async function onDownloadHTML() {
@@ -141,58 +263,177 @@ export default function Home() {
     }
   }
 
+  async function onShareLink() {
+    const params = new URLSearchParams()
+    if (group) params.set('g', group)
+    if (quota) params.set('q', quota)
+    if (rankInput) params.set('r', rankInput)
+    params.set('auto', '1')
+    const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setShareToast('لینک نتایج در کلیپ‌بورد کپی شد')
+      setTimeout(() => setShareToast(''), 2500)
+    } catch {
+      setShareToast('لینک: ' + url)
+      setTimeout(() => setShareToast(''), 4000)
+    }
+  }
+
+  const isFav = useCallback(
+    (key: string) => favs.some((f) => f.key === key),
+    [favs]
+  )
+
+  const toggleFav = useCallback(
+    (row: EstimatedRow, g: GroupKey, q: QuotaKey, rank: number) => {
+      const key = rowKey(row, g, q)
+      setFavs((prev) => {
+        let next: FavItem[]
+        if (prev.some((f) => f.key === key)) {
+          next = prev.filter((f) => f.key !== key)
+        } else {
+          next = [
+            ...prev,
+            {
+              key,
+              major: row.major,
+              university: row.university,
+              city: row.city,
+              universityType: row.universityType,
+              cutoff: row.cutoff,
+              chance: row.chance,
+              group: g,
+              quota: q,
+              rank,
+              savedAt: Date.now(),
+            },
+          ]
+        }
+        saveFavs(next)
+        return next
+      })
+    },
+    []
+  )
+
+  const clearFavs = useCallback(() => {
+    setFavs([])
+    saveFavs([])
+  }, [])
+
   const isDark = theme === 'dark'
 
   return (
-    <div dir="rtl" className="min-h-screen flex flex-col bg-background text-foreground">
+    <div dir="rtl" className="min-h-screen flex flex-col bg-background text-foreground relative overflow-x-hidden">
+      {/* Decorative background blobs */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-40 -right-32 w-[520px] h-[520px] rounded-full bg-emerald-500/15 dark:bg-emerald-500/10 blur-3xl animate-pulse-slow" />
+        <div className="absolute top-32 -left-40 w-[480px] h-[480px] rounded-full bg-violet-500/15 dark:bg-violet-500/10 blur-3xl animate-pulse-slow" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute bottom-20 right-1/3 w-[360px] h-[360px] rounded-full bg-amber-500/10 dark:bg-amber-500/5 blur-3xl animate-pulse-slow" style={{ animationDelay: '0.7s' }} />
+      </div>
+
+      <style>{`
+        @keyframes pulseSlow {
+          0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.9; }
+          50% { transform: scale(1.15) translate(20px, -10px); opacity: 1; }
+        }
+        .animate-pulse-slow { animation: pulseSlow 12s ease-in-out infinite; }
+      `}</style>
+
       {/* Sticky header */}
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50">
         <div className="container mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-              <GraduationCap className="w-6 h-6 text-white" />
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex items-center gap-3"
+          >
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl blur-md opacity-60 animate-pulse" />
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <GraduationCap className="w-6 h-6 text-white" />
+              </div>
             </div>
             <div className="leading-tight">
               <p className="font-extrabold text-base sm:text-lg">تخمین رشته قبولی با رتبه</p>
               <p className="text-xs text-muted-foreground">کنکور سراسری ۱۴۰۵ — نسخه قابل دانلود</p>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
+          </motion.div>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFavs((v) => !v)}
+              className="relative"
+              aria-label="علاقه‌مندی‌ها"
+            >
+              <Heart
+                className={cn(
+                  'w-4 h-4',
+                  mounted && favs.length > 0 && 'fill-rose-500 text-rose-500'
+                )}
+              />
+              <span className="hidden sm:inline me-1">علاقه‌مندی‌ها</span>
+              {mounted && favs.length > 0 && (
+                <span className="absolute -top-1 -left-1 min-w-4 h-4 px-1 text-[10px] font-bold bg-rose-500 text-white rounded-full flex items-center justify-center">
+                  {fa(favs.length)}
+                </span>
+              )}
+            </Button>
             <Button
               variant="outline"
               size="icon"
               aria-label="تغییر تم"
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
+              suppressHydrationWarning
             >
-              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {mounted ? (
+                <AnimatePresence mode="wait">
+                  {isDark ? (
+                    <motion.div key="sun" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}>
+                      <Sun className="w-4 h-4" />
+                    </motion.div>
+                  ) : (
+                    <motion.div key="moon" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.2 }}>
+                      <Moon className="w-4 h-4" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              ) : (
+                <Sun className="w-4 h-4" />
+              )}
             </Button>
           </div>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 opacity-90">
-          <div className="absolute -top-32 -right-32 w-[420px] h-[420px] rounded-full bg-emerald-500/20 blur-3xl" />
-          <div className="absolute -top-20 -left-32 w-[420px] h-[420px] rounded-full bg-violet-500/20 blur-3xl" />
-        </div>
+      <section className="relative">
         <div className="container mx-auto max-w-6xl px-4 pt-10 pb-6 text-center">
-          <Badge
-            variant="outline"
-            className="mb-3 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
           >
-            <Sparkles className="w-3.5 h-3.5 me-1.5" /> نرم افزار رایگان تخمین رشته قبولی
-          </Badge>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-emerald-500 via-teal-500 to-violet-500 bg-clip-text text-transparent">
-            تخمین رشته قبولی با رتبه کنکور ۱۴۰۵
-          </h1>
-          <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-3xl mx-auto leading-8">
-            گروه آزمایشی، سهمیه و رتبه خود را وارد کنید تا فهرستی از رشته‌محل‌های پیشنهادی را در سه دسته{' '}
-            <span className="text-emerald-500 font-semibold">خوش‌بینانه</span>،{' '}
-            <span className="text-amber-500 font-semibold">منطقی</span> و{' '}
-            <span className="text-rose-500 font-semibold">بدبینانه</span> مشاهده کنید.
-            داده‌ها بر اساس کارنامه قبولی سال گذشته و با خطای تخمینی کمتر از ۵٪ تنظیم شده‌اند.
-          </p>
+            <Badge
+              variant="outline"
+              className="mb-3 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
+            >
+              <Sparkles className="w-3.5 h-3.5 me-1.5" /> نرم افزار رایگان تخمین رشته قبولی
+            </Badge>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-emerald-500 via-teal-500 to-violet-500 bg-clip-text text-transparent leading-tight">
+              تخمین رشته قبولی با رتبه کنکور ۱۴۰۵
+            </h1>
+            <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-3xl mx-auto leading-8">
+              گروه آزمایشی، سهمیه و رتبه خود را وارد کنید تا فهرستی از رشته‌محل‌های پیشنهادی را در سه دسته{' '}
+              <span className="text-emerald-500 font-semibold">خوش‌بینانه</span>،{' '}
+              <span className="text-amber-500 font-semibold">منطقی</span> و{' '}
+              <span className="text-rose-500 font-semibold">بدبینانه</span> مشاهده کنید.
+              داده‌ها بر اساس کارنامه قبولی سال گذشته و با خطای تخمینی کمتر از ۵٪ تنظیم شده‌اند.
+            </p>
+          </motion.div>
         </div>
       </section>
 
@@ -200,7 +441,7 @@ export default function Home() {
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Form */}
           <div className="lg:col-span-2">
-            <Card className="lg:sticky lg:top-24 border-border/60 shadow-xl shadow-emerald-500/5">
+            <Card className="lg:sticky lg:top-24 border-border/60 shadow-xl shadow-emerald-500/5 backdrop-blur-sm bg-card/95">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calculator className="w-5 h-5 text-emerald-500" />
@@ -217,7 +458,11 @@ export default function Home() {
                       <GraduationCap className="w-4 h-4 text-muted-foreground" />
                       رشته تحصیلی (گروه آزمایشی)
                     </Label>
-                    <Select value={group} onValueChange={(v) => setGroup(v as GroupKey)}>
+                    <Select
+                      key={`group-${mounted}`}
+                      value={group}
+                      onValueChange={(v) => { setGroup(v as GroupKey); setUserTouched(true) }}
+                    >
                       <SelectTrigger id="groupSel" className="w-full">
                         <SelectValue placeholder="انتخاب گروه" />
                       </SelectTrigger>
@@ -239,7 +484,11 @@ export default function Home() {
                       <MapPin className="w-4 h-4 text-muted-foreground" />
                       سهمیه (منطقه)
                     </Label>
-                    <Select value={quota} onValueChange={(v) => setQuota(v as QuotaKey)}>
+                    <Select
+                      key={`quota-${mounted}`}
+                      value={quota}
+                      onValueChange={(v) => { setQuota(v as QuotaKey); setUserTouched(true) }}
+                    >
                       <SelectTrigger id="quotaSel" className="w-full">
                         <SelectValue placeholder="انتخاب سهمیه" />
                       </SelectTrigger>
@@ -268,7 +517,7 @@ export default function Home() {
                       min={1}
                       placeholder="مثلاً ۱۲۰۰۰"
                       value={rankInput}
-                      onChange={(e) => setRankInput(e.target.value)}
+                      onChange={(e) => { setRankInput(e.target.value); setUserTouched(true) }}
                       className="font-mono text-lg"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -279,34 +528,63 @@ export default function Home() {
                   <Separator />
 
                   <div className="flex flex-col gap-2">
-                    <Button type="submit" disabled={loading} className="w-full h-11 text-base">
+                    <Button type="submit" disabled={loading} className="w-full h-11 text-base group">
                       {loading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
-                        <Calculator className="w-5 h-5" />
+                        <motion.span
+                          whileHover={{ scale: 1.05 }}
+                          className="flex items-center gap-2"
+                        >
+                          <Calculator className="w-5 h-5 transition-transform group-hover:rotate-12" />
+                          {loading ? 'در حال محاسبه...' : 'مشاهده تخمین رشته قبولی'}
+                        </motion.span>
                       )}
-                      {loading ? 'در حال محاسبه...' : 'مشاهده تخمین رشته قبولی'}
                     </Button>
-                    <Button
-                      type="button"
-                      onClick={onDownloadHTML}
-                      disabled={downloading}
-                      variant="outline"
-                      className="w-full h-11 text-base"
-                    >
-                      {downloading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <Download className="w-5 h-5" />
-                      )}
-                      {downloading ? 'در حال آماده‌سازی...' : 'دانلود نسخه HTML آفلاین'}
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        onClick={onDownloadHTML}
+                        disabled={downloading}
+                        variant="outline"
+                        className="h-10 text-sm"
+                      >
+                        {downloading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                        {downloading ? 'در حال آماده‌سازی...' : 'دانلود HTML'}
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={onShareLink}
+                        variant="outline"
+                        className="h-10 text-sm"
+                      >
+                        <Share2 className="w-4 h-4" />
+                        اشتراک‌گذاری
+                      </Button>
+                    </div>
                   </div>
 
                   {error && (
-                    <div className="text-sm bg-destructive/10 border border-destructive/40 text-destructive rounded-lg px-3 py-2">
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-sm bg-destructive/10 border border-destructive/40 text-destructive rounded-lg px-3 py-2"
+                    >
                       {error}
-                    </div>
+                    </motion.div>
+                  )}
+                  {shareToast && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-sm bg-emerald-500/10 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded-lg px-3 py-2"
+                    >
+                      {shareToast}
+                    </motion.div>
                   )}
                 </form>
               </CardContent>
@@ -315,15 +593,56 @@ export default function Home() {
 
           {/* Result area */}
           <div ref={resultRef} className="lg:col-span-3 space-y-6 scroll-mt-24">
-            {!result && !loading && <EmptyState onDownload={onDownloadHTML} />}
-            {loading && <LoadingState />}
-            {result && <ResultView result={result} group={group} quota={quota} />}
+            <AnimatePresence mode="wait">
+              {!result && !loading && (
+                <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <EmptyState onDownload={onDownloadHTML} />
+                </motion.div>
+              )}
+              {loading && (
+                <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <LoadingState />
+                </motion.div>
+              )}
+              {result && !loading && (
+                <motion.div
+                  key={result ? `r-${result.group}-${result.quota}-${result.rank}` : 'r'}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -16 }}
+                  transition={{ duration: 0.35 }}
+                >
+                  <ResultView
+                    key={result ? `rv-${result.group}-${result.quota}-${result.rank}` : 'rv'}
+                    result={result}
+                    group={group}
+                    quota={quota}
+                    onToggleFav={toggleFav}
+                    isFav={isFav}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
+        {/* Favorites panel */}
+        <AnimatePresence>
+          {showFavs && (
+            <motion.section
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-6 overflow-hidden"
+            >
+              <FavsPanel favs={favs} onClear={clearFavs} onClose={() => setShowFavs(false)} />
+            </motion.section>
+          )}
+        </AnimatePresence>
+
         {/* Info & FAQ */}
         <section className="mt-12 grid md:grid-cols-3 gap-4">
-          <Card className="border-border/60">
+          <Card className="border-border/60 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 transition-all">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <ListChecks className="w-4 h-4 text-emerald-500" />
@@ -336,7 +655,7 @@ export default function Home() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-border/60">
+          <Card className="border-border/60 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-amber-500" />
@@ -349,7 +668,7 @@ export default function Home() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-border/60">
+          <Card className="border-border/60 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10 transition-all">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <GraduationCap className="w-4 h-4 text-violet-500" />
@@ -403,8 +722,18 @@ export default function Home() {
                     ۴) نسخه HTML قابل دانلود چیست؟
                   </AccordionTrigger>
                   <AccordionContent className="text-muted-foreground leading-7 text-sm">
-                    دکمه «دانلود نسخه HTML آفلاین» یک فایل HTML مستقل تولید می‌کند که شامل تمام منطق و
+                    دکمه «دانلود HTML» یک فایل HTML مستقل تولید می‌کند که شامل تمام منطق و
                     داده‌ها است و پس از دانلود بدون نیاز به اینترنت و سرور، آفلاین کار می‌کند.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="f5">
+                  <AccordionTrigger className="text-right">
+                    ۵) آیا می‌توانم نتایج را با دیگران به اشتراک بگذارم؟
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground leading-7 text-sm">
+                    بله. دکمه «اشتراک‌گذاری» لینک نتایج شما (با وضعیت فعلی فرم) را در کلیپ‌بورد کپی می‌کند.
+                    هر کس با باز کردن این لینک، همان فرم و نتایج را می‌بیند. همچنین می‌توانید با علامت قلب،
+                    رشته‌محل‌های مورد علاقه را در «علاقه‌مندی‌ها» ذخیره کنید (داده‌ها در مرورگر شما نگه‌داری می‌شوند).
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
@@ -422,9 +751,14 @@ function EmptyState({ onDownload }: { onDownload: () => void }) {
   return (
     <Card className="border-dashed border-2 border-border/60 bg-card/40">
       <CardContent className="py-14 text-center">
-        <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/15 to-teal-500/15 flex items-center justify-center mb-4">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+          className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/15 to-teal-500/15 flex items-center justify-center mb-4"
+        >
           <Sparkles className="w-8 h-8 text-emerald-500" />
-        </div>
+        </motion.div>
         <h3 className="text-lg font-bold mb-2">هنوز تخمینی ساخته نشده</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto leading-7">
           گروه آزمایشی، سهمیه و رتبه خود را وارد کنید و دکمه «مشاهده تخمین رشته قبولی» را بزنید.
@@ -470,23 +804,93 @@ function ResultView({
   result,
   group,
   quota,
+  onToggleFav,
+  isFav,
 }: {
   result: EstimateResult
   group: GroupKey
   quota: QuotaKey
+  onToggleFav: (row: EstimatedRow, g: GroupKey, q: QuotaKey, rank: number) => void
+  isFav: (key: string) => boolean
 }) {
-  const groupInfo = GROUPS.find((g) => g.key === group)!
-  const quotaInfo = QUOTAS.find((q) => q.key === quota)!
+  const groupInfo = GROUPS.find((g) => g.key === group) ?? GROUPS[0]
+  const quotaInfo = QUOTAS.find((q) => q.key === quota) ?? QUOTAS[0]
   const best = result.summary.bestChance
+
+  // Filter/search state
+  const [search, setSearch] = useState('')
+  const [uniTypeFilter, setUniTypeFilter] = useState<Set<UniversityType>>(new Set())
+  const [minChance, setMinChance] = useState(0)
+  const [view, setView] = useState<'tabs' | 'all' | 'chart'>('tabs')
+
+  // Combined filtered list
+  const allRows = useMemo(() => {
+    return [...result.optimistic, ...result.realistic, ...result.pessimistic]
+  }, [result])
+
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return allRows.filter((r) => {
+      if (uniTypeFilter.size > 0 && !uniTypeFilter.has(r.universityType)) return false
+      if (r.chance < minChance) return false
+      if (q) {
+        const hay = (r.major + ' ' + r.university + ' ' + (r.city || '')).toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
+  }, [allRows, search, uniTypeFilter, minChance])
+
+  const bucketCount = (rows: EstimatedRow[], bucket: 'optimistic' | 'realistic' | 'pessimistic') =>
+    rows.filter((r) => r.bucket === bucket).length
+
+  // Chart data
+  const chartData = useMemo(() => {
+    const bins = [
+      { name: '۹۰-۹۹٪', min: 90, max: 100, color: '#10b981' },
+      { name: '۷۰-۸۹٪', min: 70, max: 89, color: '#22c55e' },
+      { name: '۵۰-۶۹٪', min: 50, max: 69, color: '#eab308' },
+      { name: '۳۰-۴۹٪', min: 30, max: 49, color: '#f97316' },
+      { name: '۱۰-۲۹٪', min: 10, max: 29, color: '#ef4444' },
+      { name: '۰-۹٪', min: 0, max: 9, color: '#dc2626' },
+    ]
+    return bins.map((b) => ({
+      name: b.name,
+      تعداد: allRows.filter((r) => r.chance >= b.min && r.chance <= b.max).length,
+      color: b.color,
+    }))
+  }, [allRows])
+
+  const pieData = [
+    { name: 'خوش‌بینانه', value: result.optimistic.length, color: '#10b981' },
+    { name: 'منطقی', value: result.realistic.length, color: '#f59e0b' },
+    { name: 'بدبینانه', value: result.pessimistic.length, color: '#ef4444' },
+  ]
+
+  const toggleUniType = (t: UniversityType) => {
+    setUniTypeFilter((prev) => {
+      const next = new Set(prev)
+      if (next.has(t)) next.delete(t)
+      else next.add(t)
+      return next
+    })
+  }
 
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card">
+      <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="text-2xl">{groupInfo.emoji}</span>
+              <motion.span
+                initial={{ rotate: -10, scale: 0.9 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200 }}
+                className="text-2xl"
+              >
+                {groupInfo.emoji}
+              </motion.span>
               <div>
                 <CardTitle className="text-base">
                   {groupInfo.label} — {quotaInfo.label}
@@ -509,56 +913,318 @@ function ResultView({
               value={faFmt(result.summary.reachableCount)}
               label="انتخاب در دسترس"
               color="text-emerald-500"
+              delay={0}
             />
             <Stat
               icon={<TrendingUp className="w-4 h-4" />}
               value={result.summary.medianRank ? faFmt(result.summary.medianRank) : '—'}
               label="میانه رتبه قبولی"
               color="text-amber-500"
+              delay={0.05}
             />
             <Stat
               icon={<Award className="w-4 h-4" />}
               value={best ? `${fa(best.chance)}٪` : '—'}
               label="بیشترین شانس"
               color="text-violet-500"
+              delay={0.1}
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabs for the 3 buckets */}
-      <Tabs defaultValue="optimistic" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full h-auto">
-          <TabsTrigger value="optimistic" className="flex flex-col gap-1 py-2 data-[state=active]:text-emerald-500">
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4" /> خوش‌بینانه
-            </span>
-            <span className="text-[11px] text-muted-foreground">({fa(result.optimistic.length)})</span>
-          </TabsTrigger>
-          <TabsTrigger value="realistic" className="flex flex-col gap-1 py-2 data-[state=active]:text-amber-500">
-            <span className="flex items-center gap-1.5">
-              <Scale className="w-4 h-4" /> منطقی
-            </span>
-            <span className="text-[11px] text-muted-foreground">({fa(result.realistic.length)})</span>
-          </TabsTrigger>
-          <TabsTrigger value="pessimistic" className="flex flex-col gap-1 py-2 data-[state=active]:text-rose-500">
-            <span className="flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4" /> بدبینانه
-            </span>
-            <span className="text-[11px] text-muted-foreground">({fa(result.pessimistic.length)})</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Filter bar */}
+      <Card className="border-border/60">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="جستجوی رشته، دانشگاه یا شهر..."
+                className="pr-9 h-9"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                  <Filter className="w-4 h-4" />
+                  نوع دانشگاه
+                  {uniTypeFilter.size > 0 && (
+                    <Badge variant="secondary" className="me-1 ms-1 text-[10px] px-1.5 py-0">
+                      {fa(uniTypeFilter.size)}
+                    </Badge>
+                  )}
+                  <ChevronDown className="w-3 h-3 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="text-xs">نوع دانشگاه</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {UNI_TYPES_LIST.map((t) => (
+                  <DropdownMenuCheckboxItem
+                    key={t}
+                    checked={uniTypeFilter.has(t)}
+                    onCheckedChange={() => toggleUniType(t)}
+                    className="text-sm"
+                  >
+                    {UNIVERSITY_TYPE_LABEL[t]}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {uniTypeFilter.size > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <button
+                      onClick={() => setUniTypeFilter(new Set())}
+                      className="w-full text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 text-right"
+                    >
+                      پاک کردن فیلتر
+                    </button>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-        <TabsContent value="optimistic" className="mt-3">
-          <BucketList rows={result.optimistic} tone="emerald" emptyText="موردی در دسته خوش‌بینانه یافت نشد." />
-        </TabsContent>
-        <TabsContent value="realistic" className="mt-3">
-          <BucketList rows={result.realistic} tone="amber" emptyText="موردی در دسته منطقی یافت نشد." />
-        </TabsContent>
-        <TabsContent value="pessimistic" className="mt-3">
-          <BucketList rows={result.pessimistic} tone="rose" emptyText="موردی در دسته بدبینانه یافت نشد." />
-        </TabsContent>
-      </Tabs>
+            <div className="flex items-center gap-2 px-2 h-9 border border-border/60 rounded-md bg-background/50">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">حداقل شانس:</span>
+              <input
+                type="range"
+                min={0}
+                max={99}
+                step={1}
+                value={minChance}
+                onChange={(e) => setMinChance(Number(e.target.value))}
+                className="w-20 accent-emerald-500"
+              />
+              <span className="text-xs font-mono font-bold w-7 text-center text-emerald-500">
+                {fa(minChance)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 ms-auto">
+              <Button
+                variant={view === 'tabs' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setView('tabs')}
+                className="h-9 px-2"
+                aria-label="نمای تب"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={view === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setView('all')}
+                className="h-9 px-2"
+                aria-label="نمای لیست"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={view === 'chart' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setView('chart')}
+                className="h-9 px-2"
+                aria-label="نمای نمودار"
+              >
+                <PieIcon className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          {(search || uniTypeFilter.size > 0 || minChance > 0) && (
+            <div className="mt-3 text-xs text-muted-foreground flex items-center gap-2">
+              <span>
+                نمایش <span className="font-bold text-foreground">{fa(filteredRows.length)}</span> مورد از{' '}
+                <span className="font-bold">{fa(allRows.length)}</span> رشته‌محل
+              </span>
+              <button
+                onClick={() => {
+                  setSearch('')
+                  setUniTypeFilter(new Set())
+                  setMinChance(0)
+                }}
+                className="text-emerald-500 hover:text-emerald-400 inline-flex items-center gap-1"
+              >
+                <RotateCcw className="w-3 h-3" /> پاک کردن همه
+              </button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* View content */}
+      {view === 'tabs' && (
+        <Tabs defaultValue="optimistic" className="w-full">
+          <TabsList className="grid grid-cols-3 w-full h-auto">
+            <TabsTrigger value="optimistic" className="flex flex-col gap-1 py-2 data-[state=active]:text-emerald-500">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4" /> خوش‌بینانه
+              </span>
+              <span className="text-[11px] text-muted-foreground">({fa(bucketCount(filteredRows, 'optimistic'))})</span>
+            </TabsTrigger>
+            <TabsTrigger value="realistic" className="flex flex-col gap-1 py-2 data-[state=active]:text-amber-500">
+              <span className="flex items-center gap-1.5">
+                <Scale className="w-4 h-4" /> منطقی
+              </span>
+              <span className="text-[11px] text-muted-foreground">({fa(bucketCount(filteredRows, 'realistic'))})</span>
+            </TabsTrigger>
+            <TabsTrigger value="pessimistic" className="flex flex-col gap-1 py-2 data-[state=active]:text-rose-500">
+              <span className="flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4" /> بدبینانه
+              </span>
+              <span className="text-[11px] text-muted-foreground">({fa(bucketCount(filteredRows, 'pessimistic'))})</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="optimistic" className="mt-3">
+            <BucketList
+              rows={filteredRows.filter((r) => r.bucket === 'optimistic')}
+              tone="emerald"
+              emptyText="موردی در دسته خوش‌بینانه یافت نشد."
+              onToggleFav={(r) => onToggleFav(r, group, quota, result.rank)}
+              isFav={(r) => isFav(rowKey(r, group, quota))}
+            />
+          </TabsContent>
+          <TabsContent value="realistic" className="mt-3">
+            <BucketList
+              rows={filteredRows.filter((r) => r.bucket === 'realistic')}
+              tone="amber"
+              emptyText="موردی در دسته منطقی یافت نشد."
+              onToggleFav={(r) => onToggleFav(r, group, quota, result.rank)}
+              isFav={(r) => isFav(rowKey(r, group, quota))}
+            />
+          </TabsContent>
+          <TabsContent value="pessimistic" className="mt-3">
+            <BucketList
+              rows={filteredRows.filter((r) => r.bucket === 'pessimistic')}
+              tone="rose"
+              emptyText="موردی در دسته بدبینانه یافت نشد."
+              onToggleFav={(r) => onToggleFav(r, group, quota, result.rank)}
+              isFav={(r) => isFav(rowKey(r, group, quota))}
+            />
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {view === 'all' && (
+        <BucketList
+          rows={filteredRows}
+          tone="emerald"
+          emptyText="موردی با فیلتر فعلی یافت نشد."
+          onToggleFav={(r) => onToggleFav(r, group, quota, result.rank)}
+          isFav={(r) => isFav(rowKey(r, group, quota))}
+          showBucketBadge
+        />
+      )}
+
+      {view === 'chart' && (
+        <Card className="border-border/60">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TableIcon className="w-4 h-4 text-emerald-500" />
+              تحلیل توزیع شانس قبولی
+            </CardTitle>
+            <CardDescription>
+              توزیع شانس قبولی شما در {fa(allRows.length)} رشته‌محل — کمک به درک کلی وضعیت
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <p className="text-xs text-muted-foreground mb-2 text-center">توزیع درصد شانس قبولی</p>
+                <div className="h-[260px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 11, fontFamily: 'inherit' }}
+                        stroke="currentColor"
+                        className="text-muted-foreground"
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11 }}
+                        stroke="currentColor"
+                        className="text-muted-foreground"
+                        allowDecimals={false}
+                      />
+                      <RTooltip
+                        cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                        contentStyle={{
+                          background: 'rgba(20,30,55,0.95)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 12,
+                          color: 'var(--foreground)',
+                          fontSize: 12,
+                          fontFamily: 'inherit',
+                        }}
+                        labelStyle={{ color: 'var(--foreground)' }}
+                      />
+                      <Bar dataKey="تعداد" radius={[8, 8, 0, 0]}>
+                        {chartData.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-2 text-center">سهم هر دسته</p>
+                <div className="h-[260px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={90}
+                        paddingAngle={2}
+                      >
+                        {pieData.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.color} stroke="var(--background)" strokeWidth={2} />
+                        ))}
+                      </Pie>
+                      <RTooltip
+                        contentStyle={{
+                          background: 'rgba(20,30,55,0.95)',
+                          border: '1px solid var(--border)',
+                          borderRadius: 12,
+                          color: 'var(--foreground)',
+                          fontSize: 12,
+                          fontFamily: 'inherit',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-2 flex flex-col gap-1">
+                  {pieData.map((p) => (
+                    <div key={p.name} className="flex items-center gap-2 text-xs">
+                      <span className="w-3 h-3 rounded" style={{ background: p.color }} />
+                      <span className="flex-1">{p.name}</span>
+                      <span className="font-mono font-bold">{fa(p.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
@@ -568,20 +1234,27 @@ function Stat({
   value,
   label,
   color,
+  delay = 0,
 }: {
   icon: React.ReactNode
   value: string
   label: string
   color: string
+  delay?: number
 }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-center">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay }}
+      className="rounded-lg border border-border/60 bg-background/60 p-3 text-center"
+    >
       <div className="flex items-center justify-center gap-1.5 mb-1">
         <span className={color}>{icon}</span>
       </div>
       <div className={cn('text-lg font-bold leading-tight', color)}>{value}</div>
       <div className="text-[11px] text-muted-foreground mt-0.5">{label}</div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -589,10 +1262,16 @@ function BucketList({
   rows,
   tone,
   emptyText,
+  onToggleFav,
+  isFav,
+  showBucketBadge = false,
 }: {
   rows: EstimatedRow[]
   tone: 'emerald' | 'amber' | 'rose'
   emptyText: string
+  onToggleFav: (r: EstimatedRow) => void
+  isFav: (r: EstimatedRow) => boolean
+  showBucketBadge?: boolean
 }) {
   const toneClasses =
     tone === 'emerald'
@@ -600,8 +1279,6 @@ function BucketList({
       : tone === 'amber'
         ? 'from-amber-500/15'
         : 'from-rose-500/15'
-  const barTone =
-    tone === 'emerald' ? 'bg-emerald-500' : tone === 'amber' ? 'bg-amber-500' : 'bg-rose-500'
   if (rows.length === 0) {
     return (
       <Card className="border-dashed border-2 border-border/60 bg-card/40">
@@ -615,7 +1292,14 @@ function BucketList({
     <Card className="border-border/60">
       <CardContent className="p-0 max-h-[640px] overflow-y-auto custom-scroll">
         {rows.map((r, i) => (
-          <RowItem key={`${r.major}-${r.university}-${i}`} row={r} barTone={barTone} gradientClass={toneClasses} />
+          <RowItem
+            key={`${r.major}-${r.university}-${i}`}
+            row={r}
+            gradientClass={toneClasses}
+            onToggleFav={onToggleFav}
+            isFav={isFav}
+            showBucketBadge={showBucketBadge}
+          />
         ))}
       </CardContent>
     </Card>
@@ -624,12 +1308,16 @@ function BucketList({
 
 function RowItem({
   row,
-  barTone,
   gradientClass,
+  onToggleFav,
+  isFav,
+  showBucketBadge,
 }: {
   row: EstimatedRow
-  barTone: string
   gradientClass: string
+  onToggleFav: (r: EstimatedRow) => void
+  isFav: (r: EstimatedRow) => boolean
+  showBucketBadge?: boolean
 }) {
   const chance = row.chance
   const chanceColor =
@@ -640,11 +1328,48 @@ function RowItem({
       : chance >= 40
         ? 'from-amber-500 to-amber-400'
         : 'from-rose-500 to-rose-400'
+  const fav = isFav(row)
+  const bucketLabel =
+    row.bucket === 'optimistic'
+      ? 'خوش‌بینانه'
+      : row.bucket === 'realistic'
+        ? 'منطقی'
+        : 'بدبینانه'
+  const bucketTone =
+    row.bucket === 'optimistic'
+      ? 'text-emerald-500 border-emerald-500/30'
+      : row.bucket === 'realistic'
+        ? 'text-amber-500 border-amber-500/30'
+        : 'text-rose-500 border-rose-500/30'
+
   return (
-    <div className={cn('p-4 border-b border-border/60 bg-gradient-to-l to-transparent', gradientClass)}>
+    <motion.div
+      initial={{ opacity: 0, x: 10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.25 }}
+      className={cn(
+        'group relative p-4 border-b border-border/60 bg-gradient-to-l to-transparent hover:from-foreground/5 transition-colors',
+        gradientClass
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm sm:text-base leading-6 mb-1">{row.major}</p>
+          <div className="flex items-start gap-2 mb-1">
+            <p className="font-bold text-sm sm:text-base leading-6 flex-1">{row.major}</p>
+            <button
+              type="button"
+              onClick={() => onToggleFav(row)}
+              aria-label={fav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
+              className={cn(
+                'shrink-0 p-1 rounded-md transition-colors',
+                fav
+                  ? 'text-rose-500 hover:bg-rose-500/10'
+                  : 'text-muted-foreground hover:text-rose-500 hover:bg-rose-500/5'
+              )}
+            >
+              <Heart className={cn('w-4 h-4', fav && 'fill-rose-500')} />
+            </button>
+          </div>
           <p className="text-xs text-muted-foreground leading-6 mb-2">
             <span className="font-medium text-foreground/90">{row.university}</span>
             {row.city ? ` — ${row.city}` : ''}
@@ -666,15 +1391,25 @@ function RowItem({
                 اختلاف شما با آخرین رتبه: {faFmt(Math.abs(row.rankDistance))} بدتر
               </Badge>
             )}
+            {showBucketBadge && (
+              <Badge variant="outline" className={cn('text-[10px] px-2 py-0.5', bucketTone)}>
+                {bucketLabel}
+              </Badge>
+            )}
           </div>
         </div>
         <div className="text-left shrink-0">
-          <div className={cn('text-2xl font-extrabold leading-none', chanceColor)}>{fa(chance)}٪</div>
+          <div className={cn('text-2xl font-extrabold leading-none tabular-nums', chanceColor)}>
+            {fa(chance)}٪
+          </div>
           <div className="text-[10px] text-muted-foreground mt-1">شانس قبولی</div>
         </div>
       </div>
       <div className="mt-3">
-        <Progress value={chance} className={cn('h-1.5 bg-muted/60', `[&>div]:bg-gradient-to-l [&>div]:${chanceGradient}`)} />
+        <Progress
+          value={chance}
+          className={cn('h-1.5 bg-muted/60', `[&>div]:bg-gradient-to-l [&>div]:${chanceGradient}`)}
+        />
       </div>
       <style>{`
         .custom-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -682,7 +1417,100 @@ function RowItem({
         .custom-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
       `}</style>
-    </div>
+    </motion.div>
+  )
+}
+
+function FavsPanel({
+  favs,
+  onClear,
+  onClose,
+}: {
+  favs: FavItem[]
+  onClear: () => void
+  onClose: () => void
+}) {
+  const sorted = useMemo(() => [...favs].sort((a, b) => b.savedAt - a.savedAt), [favs])
+  return (
+    <Card className="border-rose-500/30 bg-gradient-to-br from-rose-500/5 via-card to-card">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-rose-500/15 flex items-center justify-center">
+              <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
+            </div>
+            <div>
+              <CardTitle className="text-base">علاقه‌مندی‌ها ({fa(favs.length)})</CardTitle>
+              <CardDescription className="text-xs">
+                رشته‌محل‌های ذخیره‌شده در این مرورگر
+              </CardDescription>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {favs.length > 0 && (
+              <Button variant="outline" size="sm" onClick={onClear}>
+                <RotateCcw className="w-3.5 h-3.5" /> پاک کردن همه
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="w-4 h-4" /> بستن
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {sorted.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-8 text-center">
+            هنوز موردی به علاقه‌مندی‌ها اضافه نشده. با زدن قلب کنار هر رشته‌محل، آن را اینجا ذخیره کنید.
+          </p>
+        ) : (
+          <div className="max-h-96 overflow-y-auto custom-scroll -mx-2 px-2 space-y-2">
+            {sorted.map((f) => (
+              <div
+                key={f.key}
+                className="p-3 rounded-lg border border-border/60 bg-background/50 hover:bg-background/80 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm leading-6 mb-0.5">{f.major}</p>
+                    <p className="text-xs text-muted-foreground leading-5 mb-1.5">
+                      {f.university}{f.city ? ` — ${f.city}` : ''}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        {UNIVERSITY_TYPE_LABEL[f.universityType]}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        {GROUPS.find((g) => g.key === f.group)?.label} —{' '}
+                        {QUOTAS.find((q) => q.key === f.quota)?.label}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        رتبه: <span className="font-mono">{faFmt(f.rank)}</span>
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="text-left shrink-0">
+                    <div
+                      className={cn(
+                        'text-xl font-extrabold tabular-nums',
+                        f.chance >= 70
+                          ? 'text-emerald-500'
+                          : f.chance >= 40
+                            ? 'text-amber-500'
+                            : 'text-rose-500'
+                      )}
+                    >
+                      {fa(f.chance)}٪
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">شانس</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -709,7 +1537,7 @@ function Footer() {
           </div>
         </div>
         <Separator className="my-4" />
-        <p className="text-xs text-muted-foreground text-center leading-6">
+        <p className="text-xs text-muted-foreground text-center leading-6" suppressHydrationWarning>
           © {new Date().getFullYear()} — این نرم افزار یک بازسازی مستقل از روی نرم افزار «تخمین رشته قبولی با رتبه»
           سایت هیوا است و هیچ وابستگی رسمی به سازمان سنجش یا مؤسسه هیوا ندارد. داده‌ها الگویی و بر اساس
           رتبه‌های قبولی سال‌های گذشته تنظیم شده‌اند.
