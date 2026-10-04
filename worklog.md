@@ -342,3 +342,97 @@ Stage Summary:
 - All 4 new features (CSV/JSON/Priority list/Copy priority) ported to the downloadable HTML file — now full feature parity for export/priority.
 - Styling: PriorityListView with animated staggered rows, mobile sheet with grouped sections, export dropdown with icons, Sonner toaster with rich colors.
 - ESLint clean; dev server stable; no runtime errors.
+
+---
+Task ID: 5
+Agent: cron-review (webDevReview)
+Task: QA pass + new features (statistics card, offline favorites, offline SVG charts, accessibility)
+
+## Current project status description/assessment
+The project was feature-complete after Task 4 with: rank estimator, filter/search, sort, favorites, history, chart view (main app only), print/PDF, keyboard shortcuts, deep-link sharing, downloadable offline HTML with CSV/JSON/priority-list features. ESLint clean, no runtime errors. The recommended next-phase work items from Task 4 were:
+- Chart view not in downloadable HTML (could hand-roll SVG charts).
+- Favorites not in downloadable HTML.
+- Sort dropdown SSR quirk (still mitigated).
+- Real Sanjesh data (out of scope).
+- PWA / offline support for main page.
+
+## QA findings (via agent-browser + curl)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Main page deep-link `?g=tajrobi&q=region3&r=3000&auto=1`: tabs show 28/2/12, no errors.
+- /api/download-html returns 85KB self-contained HTML that runs offline (38/4/18 results match main page).
+- Priority view in offline HTML works (renders 3 strategy buckets with priority rows).
+- CSV/JSON export in offline HTML works (correct filenames).
+- Copy priority list in offline HTML works (clipboard filled with correct text).
+- ESLint passes; no runtime errors in dev.log.
+- All previously-added features (filter/search/sort/favorites/history/chart/print) verified working.
+
+## New features added (Main App)
+1. **Detailed Statistics Card** (`StatisticsCard` component, always visible between Summary and Filter bar):
+   - `computeDetailedStats()` function in `lib/konkur-data.ts` computes:
+     - mean, median, std dev of cutoffs
+     - best (smallest) and worst (largest) cutoffs
+     - user percentile (what fraction of majors have a harder cutoff than the user)
+     - average chance across all rows
+     - chance distribution bins
+     - recommendation tier (excellent/good/fair/challenging/difficult) based on reach rate
+   - Visual:
+     - Card title with tier badge (color-coded: emerald/teal/amber/orange/rose)
+     - Tier description text (Persian, tailored to the user's standing)
+     - Percentile bar with gradient fill (green→red) + user marker line + "بهتر"/"بدتر" labels
+     - 6-tile stat grid (2 cols mobile, 3 cols desktop) with label/value/hint for each statistic
+     - Reach vs out-of-reach badges at the bottom
+
+## New features ported to downloadable HTML (`/api/download-html`)
+1. **Favorites (localStorage)** — full port:
+   - Heart button (♡/❤) on every result row (60 buttons total for riazi/region1)
+   - "علاقه‌مندی‌ها" button in hero header with count badge
+   - Favorites panel (separate `<section id="favPanel">`) showing saved items with major, university, city, type, group/quota, rank, chance%, chance bar, and per-item remove (✕) button
+   - "پاک کردن همه" button with confirmation dialog
+   - "بستن" button to close panel
+   - localStorage key `konkur-favorites` (mirrors main app's key for cross-file sharing)
+   - Event delegation handles dynamic re-renders (filter/sort)
+2. **Hand-rolled SVG charts** (no external library):
+   - **BarChart** (`buildBarChartSVG`) — chance distribution: 6 bins (90-99, 70-89, 50-69, 30-49, 10-29, 0-9) with colored bars, count labels above, Persian-digit Y-axis ticks (0, 25%, 50%, 75%, 100% of max), Persian-digit X-axis labels
+   - **PieChart** (`buildPieChartSVG`) — bucket distribution: 3 donut slices (خوش‌بینانه/منطقی/بدبینانه) with white separators, total count in center, "رشته‌محل" label below
+   - **Legend** — colored squares + name + count + percentage
+   - "📈 نمودار تحلیل" button toggles `#chartArea` div
+   - All SVGs use `currentColor` for axis/grid so they adapt to light/dark theme
+
+## Accessibility & styling improvements
+1. **Skip-to-content link** (`<a href="#main-content" class="skip-link">پرش به محتوای اصلی</a>`):
+   - Hidden off-screen (top: -100px) until focused via keyboard
+   - When focused (Tab from URL), animates in (top: 0) with primary-color outline
+   - Clicking focuses the `<main id="main-content">` element (with `tabIndex={-1}` + `scroll-mt-20`)
+2. **`prefers-reduced-motion` support** in globals.css:
+   - All animations/transitions reduced to 0.01ms when user prefers reduced motion
+   - Decorative animations (background blobs, pulsing logo) hidden/disabled
+   - `scroll-behavior: auto` (no smooth scrolling)
+3. **Visible focus styles** for keyboard navigation:
+   - `*:focus-visible` — 2px primary-color outline, 2px offset, 4px border radius
+   - `button:focus-visible`, `[role="button"]:focus-visible`, `a:focus-visible` — same outline
+
+## Verification (final)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Main page deep-link `?g=tajrobi&q=region3&r=3000&auto=1`: tabs show 28/2/12, no errors.
+- StatisticsCard renders: title "تحلیل آماری رتبه" + tier badge "خوب" (good), tier description, percentile bar (صدک: ۲۹٪), 6 stat tiles (mean ۲۵,۴۷۸ / median ۱۴,۶۰۰ / std dev ۳۲,۵۰۹ / hardest ۶۲۰ / easiest ۱۲۷,۰۰۰ / avg chance), reach/out-of-reach badges.
+- Skip link verified: exists with text "پرش به محتوای اصلی", hidden at top: -100px, becomes top: 0px when focused.
+- Downloadable HTML: 103KB (was 85KB), all new buttons visible (📈 نمودار تحلیل).
+- Offline favorites: clicking heart toggles ♡→❤, count badge shows ۱, localStorage stores the item, favorites panel opens with all details, ✕ remove button works, "پاک کردن همه" with confirmation works.
+- Offline charts: clicking "📈 نمودار تحلیل" toggles `#chartArea`, renders BarChart SVG (with Persian-digit axis: ۰/۱۰/۲۰/۲۹/۳۹, X labels ۹۰-۹۹/۷۰-۸۹/.../۰-۹) and PieChart SVG (donut with 3 slices, center label "۶۰ رشته‌محل", legend with counts and percentages: ۳۹/۶۵٪, ۴/۷٪, ۱۷/۲۸٪).
+- ESLint passes with zero errors/warnings.
+- No runtime errors in /home/z/my-project/dev.log.
+
+## Unresolved issues or risks, and priority recommendations for the next phase
+- **3-state theme toggle (light/dark/system)** — not implemented yet; currently only light/dark toggle. Could add a 3-state cycle.
+- **PWA / offline support** for main page — could add a service worker + manifest.json to make the main page itself work offline (currently only the downloadable HTML is offline-capable).
+- **Real Sanjesh data** — current dataset uses estimated cutoffs; real past-year admission data should be ingested.
+- **Sort dropdown SSR quirk** — still mitigated with the `key={mounted}` remount trick.
+- **Mobile bottom-sheet** could also include the priority list and chart views as additional tabs.
+- **Statistics card could be collapsible** for users who only want the basics.
+
+Stage Summary:
+- QA pass complete: all existing features verified working, no new bugs.
+- Three new feature groups added: Detailed Statistics Card (main app), Favorites with localStorage (downloadable HTML), Hand-rolled SVG BarChart + PieChart (downloadable HTML).
+- Accessibility: skip-to-content link, prefers-reduced-motion support, visible focus-visible styles.
+- ESLint clean; dev server stable; no runtime errors.
+- Downloadable HTML now has full feature parity with the main app for: rank estimation, filter/search/sort, favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts, AND now charts.

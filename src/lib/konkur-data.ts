@@ -694,3 +694,124 @@ export function resultToJSON(result: EstimateResult): string {
   return JSON.stringify(payload, null, 2);
 }
 
+// ───────────── Detailed statistics ─────────────
+// Computes a richer statistical summary of the user's standing relative to
+// past-year cutoff ranks for the active group+quota.
+export interface DetailedStats {
+  // Rank-related
+  userRank: number;
+  bestCutoff: number;       // smallest (hardest) cutoff in the dataset
+  worstCutoff: number;      // largest (easiest) cutoff in the dataset
+  meanCutoff: number;
+  medianCutoff: number;
+  stdDevCutoff: number;
+  // Percentile of the user's rank: what % of majors have a harder cutoff
+  // (i.e., cutoff smaller than user's rank — meaning the user CAN'T get in)
+  // Higher percentile = the user is in a worse position relative to the dataset
+  userPercentile: number;   // 0..100
+  // How many majors are reachable (optimistic + realistic)
+  reachableCount: number;
+  // How many majors are out of reach (pessimistic)
+  outOfReachCount: number;
+  // Average chance across all rows
+  averageChance: number;
+  // The "ladder" of cutoffs (sorted desc by chance) — used by the chart
+  // Each entry is {chance, count} bin
+  chanceDistribution: { bin: string; count: number; color: string }[];
+  // Recommendation tier
+  tier: 'excellent' | 'good' | 'fair' | 'challenging' | 'difficult';
+  tierLabel: string;
+  tierDescription: string;
+}
+
+export function computeDetailedStats(result: EstimateResult): DetailedStats {
+  const all = [
+    ...result.optimistic,
+    ...result.realistic,
+    ...result.pessimistic,
+  ];
+  const cutoffs = all.map((r) => r.cutoff).sort((a, b) => a - b);
+  const n = cutoffs.length;
+  const sum = cutoffs.reduce((a, b) => a + b, 0);
+  const mean = n ? sum / n : 0;
+  const median = n ? cutoffs[Math.floor(n / 2)] : 0;
+  const variance = n
+    ? cutoffs.reduce((acc, c) => acc + Math.pow(c - mean, 2), 0) / n
+    : 0;
+  const stdDev = Math.sqrt(variance);
+  const best = n ? cutoffs[0] : 0;
+  const worst = n ? cutoffs[n - 1] : 0;
+  // User percentile: what fraction of cutoffs are HARDER than user's rank
+  // (i.e., cutoff < userRank → user can't get in → user is worse than that major)
+  const harder = cutoffs.filter((c) => c < result.rank).length;
+  const userPercentile = n ? (harder / n) * 100 : 0;
+
+  const chances = all.map((r) => r.chance);
+  const averageChance = n
+    ? Math.round(chances.reduce((a, b) => a + b, 0) / n)
+    : 0;
+
+  // Chance distribution bins (matching the existing chart)
+  const bins = [
+    { bin: '۹۰-۹۹٪', min: 90, max: 100, color: '#10b981' },
+    { bin: '۷۰-۸۹٪', min: 70, max: 89, color: '#22c55e' },
+    { bin: '۵۰-۶۹٪', min: 50, max: 69, color: '#eab308' },
+    { bin: '۳۰-۴۹٪', min: 30, max: 49, color: '#f97316' },
+    { bin: '۱۰-۲۹٪', min: 10, max: 29, color: '#ef4444' },
+    { bin: '۰-۹٪', min: 0, max: 9, color: '#dc2626' },
+  ];
+  const chanceDistribution = bins.map((b) => ({
+    bin: b.bin,
+    count: all.filter((r) => r.chance >= b.min && r.chance <= b.max).length,
+    color: b.color,
+  }));
+
+  // Tier
+  const reachRate = n ? (result.summary.reachableCount / n) * 100 : 0;
+  let tier: DetailedStats['tier'];
+  if (reachRate >= 80) tier = 'excellent';
+  else if (reachRate >= 60) tier = 'good';
+  else if (reachRate >= 40) tier = 'fair';
+  else if (reachRate >= 20) tier = 'challenging';
+  else tier = 'difficult';
+  const tierMeta: Record<DetailedStats['tier'], { label: string; desc: string }> = {
+    excellent: {
+      label: 'عالی',
+      desc: 'رتبه شما در محدوده بسیار خوبی قرار دارد — شانس قبولی در اکثر رشته‌محل‌ها بالاست.',
+    },
+    good: {
+      label: 'خوب',
+      desc: 'رتبه شما نسبتاً خوب است — گزینه‌های قابل قبولی در دسترس شماست.',
+    },
+    fair: {
+      label: 'متوسط',
+      desc: 'رتبه شما متوسط است — باید با دقت انتخاب کنید و سهم گزینه‌های منطقی را بیشتر کنید.',
+    },
+    challenging: {
+      label: 'چالشی',
+      desc: 'رتبه شما چالش‌برانگیز است — روی گزینه‌های منطقی و بدبینانه تمرکز کنید.',
+    },
+    difficult: {
+      label: 'دشوار',
+      desc: 'رتبه شما دشوار است — گزینه‌های امن کم است؛ باید واقع‌بینانه انتخاب کنید.',
+    },
+  };
+
+  return {
+    userRank: result.rank,
+    bestCutoff: best,
+    worstCutoff: worst,
+    meanCutoff: Math.round(mean),
+    medianCutoff: median,
+    stdDevCutoff: Math.round(stdDev),
+    userPercentile: Math.round(userPercentile),
+    reachableCount: result.summary.reachableCount,
+    outOfReachCount: result.pessimistic.length,
+    averageChance,
+    chanceDistribution,
+    tier,
+    tierLabel: tierMeta[tier].label,
+    tierDescription: tierMeta[tier].desc,
+  };
+}
+

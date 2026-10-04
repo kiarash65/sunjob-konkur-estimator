@@ -329,6 +329,13 @@ export async function GET(req: NextRequest) {
     <span class="pill">● نرم افزار رایگان تخمین رشته قبولی</span>
     <h1>تخمین رشته قبولی با رتبه کنکور ۱۴۰۵</h1>
     <p class="sub">با انتخاب گروه آزمایشی، سهمیه (منطقه) و رتبه در سهمیه خود، فهرستی از رشته‌محل‌های پیشنهادی را در سه دسته خوش‌بینانه، منطقی و بدبینانه مشاهده کنید. داده‌ها بر اساس کارنامه قبولی سال گذشته با خطای تخمینی کمتر از ۵٪ است.</p>
+    <div style="display:flex; justify-content:center; margin-top: 16px;">
+      <button id="favBtn" type="button" class="btn secondary" style="position:relative; padding: 8px 16px; font-size: 13px;" aria-label="علاقه‌مندی‌ها">
+        <span class="heart-icon">♡</span>
+        <span style="margin-right:6px;">علاقه‌مندی‌ها</span>
+        <span id="favCount" style="display:none; background:#ef4444; color:#fff; font-size:10px; font-weight:700; min-width:18px; height:18px; line-height:18px; border-radius:9px; padding:0 5px; text-align:center; margin-right:6px;"></span>
+      </button>
+    </div>
   </header>
 
   <main>
@@ -362,6 +369,7 @@ export async function GET(req: NextRequest) {
           <button class="btn secondary" type="button" id="jsonBtn" style="padding: 6px 12px; font-size: 12px;">📄 JSON</button>
           <button class="btn secondary" type="button" id="priorityBtn" style="padding: 6px 12px; font-size: 12px;">✨ لیست اولویت پیشنهادی</button>
           <button class="btn secondary" type="button" id="copyPriorityBtn" style="padding: 6px 12px; font-size: 12px;">📋 کپی لیست اولویت</button>
+          <button class="btn secondary" type="button" id="chartBtn" style="padding: 6px 12px; font-size: 12px;">📈 نمودار تحلیل</button>
         </div>
         <div class="full"><div id="errBox" class="error" style="display:none"></div></div>
       </form>
@@ -419,11 +427,35 @@ export async function GET(req: NextRequest) {
         <div id="priorityList"></div>
       </div>
 
+      <!-- Chart view (hidden until shown) -->
+      <div id="chartArea" style="display:none; margin-top: 18px;">
+        <div class="card" style="padding: 18px;">
+          <h3 style="margin: 0 0 4px; font-size: 16px;">📈 تحلیل توزیع شانس قبولی</h3>
+          <p style="margin: 0 0 16px; font-size: 12px; color: var(--muted);">نمودار توزیع درصد شانس قبولی شما در رشته‌محل‌های مختلف</p>
+          <div id="chartContent"></div>
+        </div>
+      </div>
+
       <div class="tips">
         <div class="tip"><h4>خوش‌بینانه چیست؟</h4><p>رشته‌محل‌هایی که رتبه شما به‌طور قابل توجهی بهتر از آخرین رتبه قبولی سال گذشته است. شانس قبولی بالا.</p></div>
         <div class="tip"><h4>منطقی چیست؟</h4><p>رشته‌محل‌هایی که رتبه شما نزدیک به آخرین رتبه قبولی است. شانس قبولی متوسط — برای چینش اولویت حتماً در نظر بگیرید.</p></div>
         <div class="tip"><h4>بدبینانه چیست؟</h4><p>رشته‌محل‌هایی که رتبه شما از آخرین رتبه قبولی بدتر است. برای زنجیره امن (به‌عنوان گزینه پشتیبان) استفاده کنید.</p></div>
       </div>
+    </section>
+
+    <section id="favPanel" class="card" style="margin-top: 18px; display:none; border-color: rgba(239,68,68,0.3); background: linear-gradient(135deg, rgba(239,68,68,0.05), transparent);">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom: 10px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px;">❤</span>
+          <h3 style="margin: 0; font-size: 16px;">علاقه‌مندی‌ها</h3>
+          <span id="favPanelCount" style="font-size:11px; color: var(--muted);">۰ مورد</span>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button id="favClearBtn" type="button" class="btn secondary" style="padding: 4px 10px; font-size: 11px;">پاک کردن همه</button>
+          <button id="favCloseBtn" type="button" class="btn secondary" style="padding: 4px 10px; font-size: 11px;">بستن</button>
+        </div>
+      </div>
+      <div id="favList"></div>
     </section>
 
     <section class="card" style="margin-top: 18px;">
@@ -520,10 +552,13 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
 
   function rowHTML(r) {
     var chanceColor = r.chance >= 70 ? '#10b981' : (r.chance >= 40 ? '#f59e0b' : '#ef4444');
+    var key = rowKeyFor(r);
+    var isFav = !!favorites[key];
     return ''
-      + '<div class="row">'
+      + '<div class="row" data-fav-key="' + key.replace(/"/g, '&quot;') + '">'
       + '  <div class="top">'
       + '    <span class="major">' + r.major + '</span>'
+      + '    <button class="fav-btn" data-fav-key="' + key.replace(/"/g, '&quot;') + '" aria-label="' + (isFav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها') + '" style="background:none; border:0; cursor:pointer; padding:4px; color:' + (isFav ? '#ef4444' : 'var(--muted)') + ';" title="' + (isFav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها') + '">' + (isFav ? '❤' : '♡') + '</button>'
       + '    <span class="badge">🎓 ' + r.university + '</span>'
       + '    <span class="badge">🏷️ ' + uniLabel(r.universityType) + '</span>'
       + '    <span class="badge">📍 ' + (r.city || '—') + '</span>'
@@ -532,6 +567,123 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
       + '  <div class="chance-row"><span>شانس قبولی شما</span><span style="color:' + chanceColor + '; font-weight:700">' + fa(r.chance) + '٪</span></div>'
       + '  <div class="chance-bar"><div style="width:' + r.chance + '%; background:linear-gradient(90deg,#f59e0b,' + chanceColor + ')"></div></div>'
       + '</div>';
+  }
+
+  // ───── Favorites (localStorage) ─────
+  var FAV_KEY = 'konkur-favorites';
+  var favorites = {};
+  function loadFavorites() {
+    try {
+      var raw = localStorage.getItem(FAV_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      var obj = {};
+      arr.forEach(function (f) { obj[f.key] = f; });
+      favorites = obj;
+      updateFavCount();
+    } catch (e) {
+      favorites = {};
+    }
+  }
+  function saveFavorites() {
+    try {
+      var arr = Object.keys(favorites).map(function (k) { return favorites[k]; });
+      localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+      updateFavCount();
+    } catch (e) {}
+  }
+  function updateFavCount() {
+    var count = Object.keys(favorites).length;
+    var badge = document.getElementById('favCount');
+    if (badge) {
+      badge.textContent = fa(count);
+      badge.style.display = count > 0 ? 'inline-flex' : 'none';
+    }
+    var btn = document.getElementById('favBtn');
+    if (btn) {
+      var heart = btn.querySelector('.heart-icon');
+      if (heart) heart.textContent = count > 0 ? '❤' : '♡';
+    }
+  }
+  function rowKeyFor(r) {
+    var g = currentResult ? currentResult.group : '';
+    var q = currentResult ? currentResult.quota : '';
+    return g + ':' + q + ':' + r.major + '::' + r.university;
+  }
+  function toggleFavorite(r, btnEl) {
+    var key = rowKeyFor(r);
+    if (favorites[key]) {
+      delete favorites[key];
+    } else {
+      favorites[key] = {
+        key: key,
+        major: r.major,
+        university: r.university,
+        city: r.city || '',
+        universityType: r.universityType,
+        uniTypeLabel: uniLabel(r.universityType),
+        cutoff: r.cutoff,
+        chance: r.chance,
+        bucket: r.bucket,
+        group: currentResult ? currentResult.group : '',
+        quota: currentResult ? currentResult.quota : '',
+        rank: currentResult ? currentResult.rank : 0,
+        savedAt: Date.now()
+      };
+    }
+    saveFavorites();
+    // Update the button UI
+    if (btnEl) {
+      var isFav = !!favorites[key];
+      btnEl.textContent = isFav ? '❤' : '♡';
+      btnEl.style.color = isFav ? '#ef4444' : 'var(--muted)';
+      btnEl.setAttribute('aria-label', isFav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها');
+      btnEl.setAttribute('title', isFav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها');
+    }
+  }
+  function renderFavoritesPanel() {
+    var panel = document.getElementById('favPanel');
+    var list = document.getElementById('favList');
+    if (!panel || !list) return;
+    var keys = Object.keys(favorites);
+    if (keys.length === 0) {
+      list.innerHTML = '<div style="padding: 24px; text-align:center; color: var(--muted); font-size: 13px;">هنوز موردی به علاقه‌مندی‌ها اضافه نشده. با زدن ♡ کنار هر رشته‌محل، آن را اینجا ذخیره کنید.</div>';
+      return;
+    }
+    var sorted = keys.sort(function (a, b) { return favorites[b].savedAt - favorites[a].savedAt; });
+    var html = '';
+    sorted.forEach(function (k) {
+      var f = favorites[k];
+      var chanceColor = f.chance >= 70 ? '#10b981' : (f.chance >= 40 ? '#f59e0b' : '#ef4444');
+      var gLabel = GROUP_LABELS[f.group] || f.group;
+      var qLabel = QUOTA_LABELS[f.quota] || f.quota;
+      html += ''
+        + '<div class="row" style="position:relative;">'
+        + '  <div class="top">'
+        + '    <span class="major">' + f.major + '</span>'
+        + '    <button class="fav-remove" data-fav-key="' + k.replace(/"/g, '&quot;') + '" aria-label="حذف از علاقه‌مندی‌ها" style="background:none; border:0; cursor:pointer; padding:4px; color:#ef4444;" title="حذف">✕</button>'
+        + '    <span class="badge">🎓 ' + f.university + '</span>'
+        + '    <span class="badge">🏷️ ' + f.uniTypeLabel + '</span>'
+        + '    <span class="badge">📍 ' + (f.city || '—') + '</span>'
+        + '  </div>'
+        + '  <div class="uni">' + gLabel + ' — ' + qLabel + ' — رتبه ' + faFmt(f.rank) + '</div>'
+        + '  <div class="chance-row"><span>شانس قبولی</span><span style="color:' + chanceColor + '; font-weight:700">' + fa(f.chance) + '٪</span></div>'
+        + '  <div class="chance-bar"><div style="width:' + f.chance + '%; background:linear-gradient(90deg,#f59e0b,' + chanceColor + ')"></div></div>'
+        + '</div>';
+    });
+    list.innerHTML = html;
+    // Wire remove buttons
+    var removeBtns = list.querySelectorAll('.fav-remove');
+    for (var i = 0; i < removeBtns.length; i++) {
+      removeBtns[i].addEventListener('click', function (e) {
+        var key = e.currentTarget.getAttribute('data-fav-key');
+        if (favorites[key]) {
+          delete favorites[key];
+          saveFavorites();
+          renderFavoritesPanel();
+          reRender(); // refresh heart states in main list
+        }
+      });
+    }
   }
 
   // Global state for filter/search/sort
@@ -692,6 +844,57 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
 
   document.getElementById('printBtn').addEventListener('click', function () {
     window.print();
+  });
+
+  // ───── Favorites event listeners ─────
+  // Load favorites from localStorage on init
+  loadFavorites();
+
+  document.getElementById('favBtn').addEventListener('click', function () {
+    var panel = document.getElementById('favPanel');
+    if (panel.style.display === 'none') {
+      renderFavoritesPanel();
+      panel.style.display = 'block';
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      panel.style.display = 'none';
+    }
+  });
+
+  document.getElementById('favCloseBtn').addEventListener('click', function () {
+    document.getElementById('favPanel').style.display = 'none';
+  });
+
+  document.getElementById('favClearBtn').addEventListener('click', function () {
+    if (Object.keys(favorites).length === 0) return;
+    if (!confirm('همه علاقه‌مندی‌ها پاک شوند؟')) return;
+    favorites = {};
+    saveFavorites();
+    renderFavoritesPanel();
+    reRender();
+    toast('علاقه‌مندی‌ها پاک شدند');
+  });
+
+  // Event delegation for heart buttons (works for both rendered rows and re-rendered rows)
+  document.addEventListener('click', function (e) {
+    var btnEl = e.target.closest && e.target.closest('.fav-btn');
+    if (!btnEl) return;
+    var key = btnEl.getAttribute('data-fav-key');
+    if (!key || !currentResult) return;
+    // Reconstruct the EstimatedRow from currentResult by matching the key
+    var allRows = currentResult.optimistic.concat(currentResult.realistic, currentResult.pessimistic);
+    var found = null;
+    for (var i = 0; i < allRows.length; i++) {
+      var r = allRows[i];
+      var rKey = currentResult.group + ':' + currentResult.quota + ':' + r.major + '::' + r.university;
+      if (rKey === key) { found = r; break; }
+    }
+    if (found) {
+      toggleFavorite(found, btnEl);
+      // Update the panel count
+      var countEl = document.getElementById('favPanelCount');
+      if (countEl) countEl.textContent = fa(Object.keys(favorites).length) + ' مورد';
+    }
   });
 
   // ───── Export CSV / JSON ─────
@@ -864,6 +1067,146 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
     }
   }
 
+  // ───── Hand-rolled SVG charts (no external library) ─────
+  function buildBarChartSVG(data, totalWidth, totalHeight) {
+    // data: [{ bin, count, color }]
+    var padLeft = 40, padRight = 12, padTop = 12, padBottom = 30;
+    var w = totalWidth - padLeft - padRight;
+    var h = totalHeight - padTop - padBottom;
+    var maxCount = 0;
+    data.forEach(function (d) { if (d.count > maxCount) maxCount = d.count; });
+    if (maxCount === 0) maxCount = 1;
+    var barW = w / data.length * 0.7;
+    var gap = w / data.length * 0.3;
+    var svg = '<svg viewBox="0 0 ' + totalWidth + ' ' + totalHeight + '" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:auto; font-family:inherit;">';
+    // Y axis ticks
+    var ticks = 4;
+    for (var t = 0; t <= ticks; t++) {
+      var v = Math.round(maxCount * (t / ticks));
+      var y = padTop + h - (h * (t / ticks));
+      svg += '<line x1="' + padLeft + '" y1="' + y + '" x2="' + (padLeft + w) + '" y2="' + y + '" stroke="currentColor" stroke-opacity="0.1" stroke-width="1" />';
+      svg += '<text x="' + (padLeft - 6) + '" y="' + (y + 3) + '" text-anchor="end" font-size="10" fill="currentColor" opacity="0.6">' + fa(v) + '</text>';
+    }
+    // Bars
+    for (var i = 0; i < data.length; i++) {
+      var d = data[i];
+      var x = padLeft + (i * (barW + gap)) + gap / 2;
+      var barH = (d.count / maxCount) * h;
+      var y = padTop + h - barH;
+      svg += '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + barH + '" rx="4" ry="4" fill="' + d.color + '" />';
+      // Count label above bar
+      svg += '<text x="' + (x + barW / 2) + '" y="' + (y - 4) + '" text-anchor="middle" font-size="11" font-weight="700" fill="' + d.color + '">' + fa(d.count) + '</text>';
+      // X axis label
+      svg += '<text x="' + (x + barW / 2) + '" y="' + (padTop + h + 16) + '" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">' + d.bin + '</text>';
+    }
+    svg += '</svg>';
+    return svg;
+  }
+
+  function buildPieChartSVG(data, totalSize) {
+    // data: [{ name, value, color }]
+    var cx = totalSize / 2, cy = totalSize / 2;
+    var outerR = totalSize / 2 - 6;
+    var innerR = outerR * 0.6;
+    var total = 0;
+    data.forEach(function (d) { total += d.value; });
+    if (total === 0) return '<p style="text-align:center; color: var(--muted);">داده‌ای برای نمایش نیست</p>';
+    var svg = '<svg viewBox="0 0 ' + totalSize + ' ' + totalSize + '" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:auto; max-width:' + totalSize + 'px; margin: 0 auto; display:block;">';
+    var startAngle = -Math.PI / 2; // start at top
+    for (var i = 0; i < data.length; i++) {
+      var d = data[i];
+      if (d.value === 0) continue;
+      var angle = (d.value / total) * 2 * Math.PI;
+      var endAngle = startAngle + angle;
+      var x1 = cx + outerR * Math.cos(startAngle);
+      var y1 = cy + outerR * Math.sin(startAngle);
+      var x2 = cx + outerR * Math.cos(endAngle);
+      var y2 = cy + outerR * Math.sin(endAngle);
+      var x1i = cx + innerR * Math.cos(startAngle);
+      var y1i = cy + innerR * Math.sin(startAngle);
+      var x2i = cx + innerR * Math.cos(endAngle);
+      var y2i = cy + innerR * Math.sin(endAngle);
+      var largeArc = angle > Math.PI ? 1 : 0;
+      var path = 'M ' + x1 + ' ' + y1 +
+                 ' A ' + outerR + ' ' + outerR + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 +
+                 ' L ' + x2i + ' ' + y2i +
+                 ' A ' + innerR + ' ' + innerR + ' 0 ' + largeArc + ' 0 ' + x1i + ' ' + y1i +
+                 ' Z';
+      svg += '<path d="' + path + '" fill="' + d.color + '" stroke="var(--background)" stroke-width="2" />';
+      startAngle = endAngle;
+    }
+    // Center label
+    svg += '<text x="' + cx + '" y="' + (cy - 4) + '" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">' + fa(total) + '</text>';
+    svg += '<text x="' + cx + '" y="' + (cy + 12) + '" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">رشته‌محل</text>';
+    svg += '</svg>';
+    return svg;
+  }
+
+  function renderChartView(result) {
+    var allRows = result.optimistic.concat(result.realistic, result.pessimistic);
+    // Bar chart: chance distribution
+    var bins = [
+      { bin: '۹۰-۹۹', min: 90, max: 100, color: '#10b981' },
+      { bin: '۷۰-۸۹', min: 70, max: 89, color: '#22c55e' },
+      { bin: '۵۰-۶۹', min: 50, max: 69, color: '#eab308' },
+      { bin: '۳۰-۴۹', min: 30, max: 49, color: '#f97316' },
+      { bin: '۱۰-۲۹', min: 10, max: 29, color: '#ef4444' },
+      { bin: '۰-۹', min: 0, max: 9, color: '#dc2626' }
+    ];
+    var barData = bins.map(function (b) {
+      return { bin: b.bin, count: allRows.filter(function (r) { return r.chance >= b.min && r.chance <= b.max; }).length, color: b.color };
+    });
+    var barSVG = buildBarChartSVG(barData, 480, 220);
+    // Pie chart: bucket distribution
+    var pieData = [
+      { name: 'خوش‌بینانه', value: result.optimistic.length, color: '#10b981' },
+      { name: 'منطقی', value: result.realistic.length, color: '#f59e0b' },
+      { name: 'بدبینانه', value: result.pessimistic.length, color: '#ef4444' }
+    ];
+    var pieSVG = buildPieChartSVG(pieData, 180);
+    // Legend HTML
+    var legend = '<div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">';
+    pieData.forEach(function (p) {
+      var pct = allRows.length ? Math.round((p.value / allRows.length) * 100) : 0;
+      legend += '<div style="display:flex; align-items:center; gap:6px; font-size:11px;">' +
+                '<span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:' + p.color + ';"></span>' +
+                '<span style="flex:1;">' + p.name + '</span>' +
+                '<span style="font-weight:700; font-variant-numeric: tabular-nums;">' + fa(p.value) + '</span>' +
+                '<span style="color: var(--muted); font-size: 10px;">(' + fa(pct) + '٪)</span>' +
+                '</div>';
+    });
+    legend += '</div>';
+    var html = ''
+      + '<div style="display:grid; grid-template-columns: 1fr; gap: 16px;">'
+      + '  <div>'
+      + '    <p style="margin: 0 0 6px; font-size: 12px; color: var(--muted); text-align:center;">توزیع درصد شانس قبولی</p>'
+      + '    <div style="color: var(--text);">' + barSVG + '</div>'
+      + '  </div>'
+      + '  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items:center;">'
+      + '    <div><p style="margin: 0 0 6px; font-size: 12px; color: var(--muted); text-align:center;">سهم هر دسته</p><div style="color: var(--text);">' + pieSVG + '</div></div>'
+      + '    <div>' + legend + '</div>'
+      + '  </div>'
+      + '</div>';
+    document.getElementById('chartContent').innerHTML = html;
+  }
+
+  function toggleChartView() {
+    if (!currentResult) {
+      toast('ابتدا یک تخمین انجام دهید');
+      return;
+    }
+    var area = document.getElementById('chartArea');
+    if (area.style.display === 'none') {
+      renderChartView(currentResult);
+      area.style.display = 'block';
+      area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast('📈 نمودار نمایش داده شد');
+    } else {
+      area.style.display = 'none';
+      toast('نمودار بسته شد');
+    }
+  }
+
   document.getElementById('csvBtn').addEventListener('click', function () {
     if (!currentResult) { toast('ابتدا یک تخمین انجام دهید'); return; }
     var csv = resultToCSVLocal(currentResult);
@@ -881,6 +1224,8 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
   });
 
   document.getElementById('priorityBtn').addEventListener('click', togglePriorityView);
+
+  document.getElementById('chartBtn').addEventListener('click', toggleChartView);
 
   document.getElementById('copyPriorityBtn').addEventListener('click', function () {
     if (!currentResult) { toast('ابتدا یک تخمین انجام دهید'); return; }
