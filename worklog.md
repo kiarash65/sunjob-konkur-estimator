@@ -252,3 +252,93 @@ Stage Summary:
 - All new features (filter/search/sort/print/keyboard shortcut) ported to the downloadable HTML file — now feature-parity with the main app's filtering/sorting/printing.
 - Styling: custom scrollbar, range slider thumb, print-only header, print:hidden utility applied throughout.
 - ESLint clean; dev server stable; no runtime errors.
+
+---
+Task ID: 4
+Agent: cron-review (webDevReview)
+Task: QA pass + new features (priority list, export CSV/JSON, mobile sheet) + port to downloadable HTML
+
+## Current project status description/assessment
+The project was feature-complete after Task 3 with: rank estimator, filter/search, sort (5 options), favorites, history, chart view, print/PDF, keyboard shortcuts, deep-link sharing, downloadable offline HTML. ESLint clean, no runtime errors. The recommended next-phase work items from Task 3 were:
+- Mobile filter bar wraps to 3+ lines on narrow screens (could use bottom-sheet drawer).
+- Chart view & favorites not in downloadable HTML.
+- Real Sanjesh data (out of scope).
+
+## QA findings (via agent-browser + curl)
+- Main page deep-link `?g=riazi&q=region1&r=2000&auto=1` works: tabs show 39/4/17, no errors.
+- /api/download-html returns 73KB self-contained HTML that runs offline (39/4/17 results match main page).
+- Mobile viewport (375px): filter bar was 168px tall (3+ rows) — confirmed the need for a mobile-optimized layout.
+- Desktop viewport (1280px): filter bar is 80px (1 row) — looks good.
+- ESLint passes; no runtime errors in dev.log.
+- All existing features (sort, favorites, history, chart, print, share) verified working.
+
+## New features added (Main App)
+1. **Recommended Priority List view** (`PriorityListView` component) — 4th view mode (after Tabs/List/Chart):
+   - Generates a 24-choice priority list using the standard "3 buckets of 8" Konkur strategy: 8 safe (خوش‌بینانه), 8 logical (منطقی), 8 reach (بدبینانه).
+   - Each strategy section is a separate colored card with icon, label, count, description.
+   - Each row shows priority number (1-24) in a colored badge, major, university, city, type, cutoff, chance%, and a heart button for favorites.
+   - Animated entrance (staggered by priority, framer-motion `motion.li`).
+   - "کپی لیست" button copies the full priority list to clipboard as plain text with strategy labels.
+   - Includes an info card explaining the strategy ("۳ دسته ۸ تایی").
+2. **Export CSV/JSON** (`onExportCSV`, `onExportJSON`):
+   - CSV export with UTF-8 BOM for Excel compatibility, Persian headers, all 3 buckets sorted (optimistic → realistic → pessimistic, by chance desc within each).
+   - JSON export with meta (group/quota/rank/totals/best) and rows (major/university/type/city/cutoff/chance/bucket/rankDistance).
+   - Filename pattern: `taghmin-{group}-{quota}-{rank}.csv|json`.
+   - Sonner toast notifications on success/failure.
+3. **Mobile bottom-sheet drawer** for filter bar (using shadcn/ui `Sheet`):
+   - On viewports <768px (md breakpoint), the filter bar is replaced by a "فیلترها" button + a separate "خروجی" dropdown.
+   - Clicking "فیلترها" opens a bottom Sheet containing: search input, min-chance slider, university-type toggle buttons (2-column grid), sort dropdown, "اعمال فیلترها" + "پاک کردن" buttons.
+   - Active filter count badge on the "فیلترها" button.
+   - Mobile view switcher (Tabs/List/Chart/Priority) becomes a separate 4-button row.
+4. **Sonner toast notifications** (replacing inline toasts):
+   - Added `<SonnerToaster position="bottom-center" richColors closeButton dir="rtl" />` to layout.tsx.
+   - Used `toast.success()` and `toast.error()` for export actions, copy actions.
+   - Rich colors (green for success, red for error) with close button and RTL support.
+5. **Export dropdown menu** (consolidates CSV/JSON/CopyPriority/Print into one menu on desktop):
+   - Single "خروجی" button opens a dropdown with 4 items.
+   - On mobile, the same dropdown is accessible via a download-icon button.
+
+## Features ported to downloadable HTML (`/api/download-html`)
+The standalone offline HTML now has feature parity with the main app for export/priority:
+1. **CSV export button** (`📊 CSV (Excel)`) — same UTF-8 BOM CSV format with Persian headers.
+2. **JSON export button** (`📄 JSON`) — same JSON structure with meta + rows.
+3. **Priority list view button** (`✨ لیست اولویت پیشنهادی`) — toggles a `#priorityArea` div showing:
+   - Header card with title + meta (group/quota/rank/total).
+   - 3 strategy buckets (safe/logical/reach) with colored headers, each showing up to 8 priority rows.
+   - Each row shows priority number badge, major, university, city, type, cutoff, chance%, strategy label.
+4. **Copy priority list button** (`📋 کپی لیست اولویت`) — copies plain-text priority list to clipboard with fallback for older browsers.
+5. **All buttons disable-actionable when no result exists** — clicking any export button before submitting shows a toast "ابتدا یک تخمین انجام دهید".
+
+## Styling improvements
+1. **PriorityListView design** — 3 colored cards (emerald/amber/rose) with gradient backgrounds, icons (CheckCircle2/Scale/AlertTriangle), strategy badges, and animated staggered rows.
+2. **PriorityRow design** — colored priority badge (1-24), tabular-nums chance percentage, hover effect, heart button for favorites.
+3. **Mobile filter sheet** — clean bottom-sheet with grouped sections (search/chance/uni-type/sort), 2-column toggle buttons, primary "اعمال فیلترها" button.
+4. **Mobile view switcher** — 4 equal-width buttons in a row (Tabs/List/Chart/Priority).
+5. **Export dropdown** — labeled menu items with icons (FileSpreadsheet/FileJson/Wand2/Printer).
+6. **Sonner toaster** — rich colors, bottom-center, close button, RTL-aware.
+
+## Verification (final)
+- Main page deep-link `?g=riazi&q=region1&r=2000&auto=1`: tabs show 39/4/17, no errors.
+- Main page deep-link `?g=tajrobi&q=region3&r=3000&auto=1`: tabs show 28/2/12, no errors.
+- Priority view button visible and functional: clicking shows "لیست پیشنهادی اولویت انتخاب رشته" with 3 strategy sections (8 safe + 2 logical + 8 reach = 18 items for tajrobi/region3/rank=3000).
+- CSV export verified: file `taghmin-riazi-region1-2000.csv` downloaded (mocked click captures href + download attr).
+- JSON export verified: file `taghmin-riazi-region1-2000.json` downloaded.
+- Copy priority list verified: clipboard contains "لیست پیشنهادی اولویت انتخاب رشته — ریاضی / منطقه یک / رتبه ۲,۰۰۰\n\n1. مهندسی عمران — دانشگاه علم و صنعت (99٪ — امن)\n2. ..." (correct format with strategy labels).
+- Mobile sheet (375px): "فیلترها" button opens bottom Sheet with all filters; "اعمال فیلترها" closes it.
+- Downloadable HTML: 85KB, all 4 new buttons (CSV/JSON/Priority/Copy) visible. Submit → 39 results. Priority view toggle works (renders 3 strategy buckets with priority rows). CSV/JSON export produce files with correct names. Copy priority list fills clipboard with the same format.
+- ESLint passes with zero errors/warnings.
+- No runtime errors in /home/z/my-project/dev.log.
+
+## Unresolved issues or risks, and priority recommendations for the next phase
+- **Chart view not in downloadable HTML** — the offline file still lacks the recharts-based chart view. Adding it would require hand-rolling SVG charts in vanilla JS (the BarChart + PieChart from recharts can't be bundled easily).
+- **Favorites not in downloadable HTML** — the offline file doesn't have a favorites feature. Could add localStorage-based favorites mirroring the main app's `konkur-favorites` key for cross-file sharing.
+- **Sort dropdown SSR quirk** — still mitigated with the `key={mounted}` remount trick.
+- **Real Sanjesh data** — current dataset uses estimated cutoffs; real past-year admission data should be ingested for production use.
+- **PWA / offline support** — could add a service worker to make the main page itself work offline (currently only the downloadable HTML is offline-capable).
+
+Stage Summary:
+- QA pass complete: no bugs found in current functionality; mobile layout issue confirmed and fixed.
+- Five new feature groups added to the main app: Priority List view (4th view mode with 3 strategy cards), CSV/JSON export with UTF-8 BOM, Copy priority list to clipboard, Mobile bottom-sheet filter drawer, Sonner toast notifications.
+- All 4 new features (CSV/JSON/Priority list/Copy priority) ported to the downloadable HTML file — now full feature parity for export/priority.
+- Styling: PriorityListView with animated staggered rows, mobile sheet with grouped sections, export dropdown with icons, Sonner toaster with rich colors.
+- ESLint clean; dev server stable; no runtime errors.

@@ -546,3 +546,151 @@ export function estimate(group: GroupKey, quota: QuotaKey, rank: number): Estima
     },
   };
 }
+
+// ───────────── Recommended priority list ─────────────
+// Generates a recommended 24-choice Konkur priority list using the standard
+// "3 buckets of 8" strategy: 8 optimistic (safe), 8 realistic (logical), 8
+// pessimistic (reach/long-shot). This is the commonly-recommended pattern
+// for Konkur 선택 رشته.
+export interface PriorityItem extends EstimatedRow {
+  priority: number; // 1..24 (1 = highest priority)
+  strategy: 'safe' | 'logical' | 'reach';
+}
+
+export interface PriorityList {
+  items: PriorityItem[];
+  safe: PriorityItem[];
+  logical: PriorityItem[];
+  reach: PriorityItem[];
+}
+
+export function buildPriorityList(result: EstimateResult): PriorityList {
+  // Sort each bucket by chance (best first). For safe/reach, we want the
+  // best chance at the top of each sub-list. For logical, we want the closest
+  // to the user's rank (smallest absolute rankDistance) at the top.
+  const safe = [...result.optimistic]
+    .sort((a, b) => b.chance - a.chance)
+    .slice(0, 8)
+    .map((r, i) => ({ ...r, priority: i + 1, strategy: 'safe' as const }));
+
+  const logical = [...result.realistic]
+    .sort((a, b) => Math.abs(a.rankDistance) - Math.abs(b.rankDistance))
+    .slice(0, 8)
+    .map((r, i) => ({ ...r, priority: safe.length + i + 1, strategy: 'logical' as const }));
+
+  const reach = [...result.pessimistic]
+    .sort((a, b) => b.chance - a.chance)
+    .slice(0, 8)
+    .map((r, i) => ({ ...r, priority: safe.length + logical.length + i + 1, strategy: 'reach' as const }));
+
+  // Re-number priorities 1..N so they're contiguous even when buckets have <8
+  const all = [...safe, ...logical, ...reach].map((r, i) => ({
+    ...r,
+    priority: i + 1,
+  }));
+
+  return {
+    items: all,
+    safe: all.filter((r) => r.strategy === 'safe'),
+    logical: all.filter((r) => r.strategy === 'logical'),
+    reach: all.filter((r) => r.strategy === 'reach'),
+  };
+}
+
+// ───────────── CSV / JSON export ─────────────
+export function resultToCSV(result: EstimateResult): string {
+  const headers = [
+    'اولویت پیشنهادی',
+    'دسته',
+    'رشته',
+    'دانشگاه',
+    'نوع دانشگاه',
+    'شهر',
+    'آخرین رتبه قبولی',
+    'شانس قبولی (٪)',
+    'اختلاف رتبه با آخرین قبولی',
+  ];
+  const all = [
+    ...result.optimistic,
+    ...result.realistic,
+    ...result.pessimistic,
+  ];
+  // Sort: optimistic first (by chance desc), then realistic, then pessimistic
+  const bucketOrder = { optimistic: 0, realistic: 1, pessimistic: 2 };
+  const bucketLabel = { optimistic: 'خوش‌بینانه', realistic: 'منطقی', pessimistic: 'بدبینانه' };
+  all.sort((a, b) => {
+    const bo = bucketOrder[a.bucket] - bucketOrder[b.bucket];
+    if (bo !== 0) return bo;
+    return b.chance - a.chance;
+  });
+  const rows = all.map((r, i) => [
+    i + 1,
+    bucketLabel[r.bucket],
+    r.major,
+    r.university,
+    UNIVERSITY_TYPE_LABEL[r.universityType],
+    r.city || '',
+    r.cutoff,
+    r.chance,
+    r.rankDistance > 0 ? `+${r.rankDistance} (بهتر)` : `${r.rankDistance} (بدتر)`,
+  ]);
+  const allRows = [headers, ...rows];
+  // CSV (UTF-8 with BOM for Excel compatibility)
+  const csv = allRows
+    .map((row) =>
+      row
+        .map((cell) => {
+          const s = String(cell);
+          // Quote cells containing commas, quotes, or newlines
+          if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+          return s;
+        })
+        .join(',')
+    )
+    .join('\n');
+  return '\uFEFF' + csv; // BOM
+}
+
+export function resultToJSON(result: EstimateResult): string {
+  const all = [
+    ...result.optimistic,
+    ...result.realistic,
+    ...result.pessimistic,
+  ];
+  const payload = {
+    meta: {
+      group: result.group,
+      quota: result.quota,
+      rank: result.rank,
+      totalChoices: result.totalChoices,
+      reachableCount: result.summary.reachableCount,
+      medianRank: result.summary.medianRank,
+      bestChance: result.summary.bestChance
+        ? {
+            major: result.summary.bestChance.major,
+            university: result.summary.bestChance.university,
+            chance: result.summary.bestChance.chance,
+          }
+        : null,
+      generatedAt: new Date().toISOString(),
+    },
+    rows: all.map((r) => ({
+      major: r.major,
+      university: r.university,
+      universityType: UNIVERSITY_TYPE_LABEL[r.universityType],
+      city: r.city,
+      cutoff: r.cutoff,
+      chance: r.chance,
+      bucket: r.bucket,
+      bucketLabel:
+        r.bucket === 'optimistic'
+          ? 'خوش‌بینانه'
+          : r.bucket === 'realistic'
+            ? 'منطقی'
+            : 'بدبینانه',
+      rankDistance: r.rankDistance,
+    })),
+  };
+  return JSON.stringify(payload, null, 2);
+}
+

@@ -50,6 +50,11 @@ import {
   Keyboard,
   Trash2,
   Clock,
+  FileSpreadsheet,
+  FileJson,
+  Wand2,
+  Lightbulb,
+  Info,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -85,8 +90,25 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from '@/components/ui/tooltip'
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetClose,
+} from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
+import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import {
@@ -98,6 +120,10 @@ import {
   type UniversityType,
   type EstimateResult,
   type EstimatedRow,
+  type PriorityList,
+  buildPriorityList,
+  resultToCSV,
+  resultToJSON,
   toPersianDigits,
 } from '@/lib/konkur-data'
 
@@ -989,8 +1015,12 @@ function ResultView({
   const [search, setSearch] = useState('')
   const [uniTypeFilter, setUniTypeFilter] = useState<Set<UniversityType>>(new Set())
   const [minChance, setMinChance] = useState(0)
-  const [view, setView] = useState<'tabs' | 'all' | 'chart'>('tabs')
+  const [view, setView] = useState<'tabs' | 'all' | 'chart' | 'priority'>('tabs')
   const [sortBy, setSortBy] = useState<'chance' | 'cutoff-asc' | 'cutoff-desc' | 'major' | 'university'>('chance')
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+
+  // Recommended priority list (memoized on result change)
+  const priorityList = useMemo(() => buildPriorityList(result), [result])
 
   // Combined filtered list
   const allRows = useMemo(() => {
@@ -1065,6 +1095,67 @@ function ResultView({
     })
   }
 
+  function downloadBlob(content: string, filename: string, mime: string) {
+    const blob = new Blob([content], { type: mime })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => {
+      URL.revokeObjectURL(url)
+      a.remove()
+    }, 1000)
+  }
+
+  function onExportCSV() {
+    try {
+      const csv = resultToCSV(result)
+      const fname = `taghmin-${result.group}-${result.quota}-${result.rank}.csv`
+      downloadBlob(csv, fname, 'text/csv;charset=utf-8')
+      toast.success('فایل CSV دانلود شد', { description: fname, duration: 3000 })
+    } catch {
+      toast.error('دانلود CSV ناموفق بود')
+    }
+  }
+
+  function onExportJSON() {
+    try {
+      const json = resultToJSON(result)
+      const fname = `taghmin-${result.group}-${result.quota}-${result.rank}.json`
+      downloadBlob(json, fname, 'application/json;charset=utf-8')
+      toast.success('فایل JSON دانلود شد', { description: fname, duration: 3000 })
+    } catch {
+      toast.error('دانلود JSON ناموفق بود')
+    }
+  }
+
+  function onCopyPriorityList() {
+    try {
+      const lines = priorityList.items.map(
+        (p) =>
+          `${p.priority}. ${p.major} — ${p.university} (${p.chance}٪ — ${
+            p.strategy === 'safe' ? 'امن' : p.strategy === 'logical' ? 'منطقی' : 'شانس'
+          })`
+      )
+      const text = `لیست پیشنهادی اولویت انتخاب رشته — ${groupInfo.label} / ${quotaInfo.label} / رتبه ${faFmt(result.rank)}\n\n${lines.join('\n')}`
+      navigator.clipboard.writeText(text)
+      toast.success('لیست اولویت در کلیپ‌بورد کپی شد', {
+        description: `${fa(priorityList.items.length)} رشته‌محل`,
+        duration: 3000,
+      })
+    } catch {
+      toast.error('کپی ناموفق بود')
+    }
+  }
+
+  function resetFilters() {
+    setSearch('')
+    setUniTypeFilter(new Set())
+    setMinChance(0)
+  }
+
   return (
     <div className="space-y-6">
       {/* Summary */}
@@ -1125,7 +1216,57 @@ function ResultView({
       {/* Filter bar */}
       <Card className="border-border/60 print:hidden">
         <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Mobile: collapsed filter trigger + actions row */}
+          <div className="flex md:hidden items-center gap-2 mb-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setMobileFiltersOpen(true)}
+              className="h-9 flex-1"
+              aria-label="نمایش فیلترها"
+            >
+              <Filter className="w-4 h-4" />
+              فیلترها
+              {(search || uniTypeFilter.size > 0 || minChance > 0) && (
+                <Badge variant="secondary" className="me-1 ms-1 text-[10px] px-1.5 py-0">
+                  {fa(
+                    (search ? 1 : 0) + uniTypeFilter.size + (minChance > 0 ? 1 : 0)
+                  )}
+                </Badge>
+              )}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 px-2" aria-label="صدور خروجی">
+                  <Download className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel className="text-xs">صدور خروجی نتایج</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onExportCSV} className="text-sm cursor-pointer">
+                  <FileSpreadsheet className="w-4 h-4 ms-2" />
+                  دانلود CSV (Excel)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onExportJSON} className="text-sm cursor-pointer">
+                  <FileJson className="w-4 h-4 ms-2" />
+                  دانلود JSON
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onCopyPriorityList} className="text-sm cursor-pointer">
+                  <Wand2 className="w-4 h-4 ms-2" />
+                  کپی لیست اولویت پیشنهادی
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onPrint} className="text-sm cursor-pointer">
+                  <Printer className="w-4 h-4 ms-2" />
+                  چاپ / PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Desktop: full filter bar */}
+          <div className="hidden md:flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
@@ -1231,16 +1372,40 @@ function ResultView({
               </SelectContent>
             </Select>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onPrint}
-              className="h-9 px-2"
-              aria-label="چاپ / ذخیره PDF"
-            >
-              <Printer className="w-4 h-4" />
-              <span className="hidden lg:inline ms-1">چاپ</span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-2"
+                  aria-label="صدور خروجی"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden lg:inline ms-1">خروجی</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel className="text-xs">صدور خروجی نتایج</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onExportCSV} className="text-sm cursor-pointer">
+                  <FileSpreadsheet className="w-4 h-4 ms-2" />
+                  دانلود CSV (Excel)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onExportJSON} className="text-sm cursor-pointer">
+                  <FileJson className="w-4 h-4 ms-2" />
+                  دانلود JSON
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onCopyPriorityList} className="text-sm cursor-pointer">
+                  <Wand2 className="w-4 h-4 ms-2" />
+                  کپی لیست اولویت پیشنهادی
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onPrint} className="text-sm cursor-pointer">
+                  <Printer className="w-4 h-4 ms-2" />
+                  چاپ / PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <div className="flex items-center gap-1 ms-auto print:hidden">
               <Button
@@ -1270,8 +1435,58 @@ function ResultView({
               >
                 <PieIcon className="w-4 h-4" />
               </Button>
+              <Button
+                variant={view === 'priority' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setView('priority')}
+                className="h-9 px-2"
+                aria-label="لیست اولویت پیشنهادی"
+              >
+                <Wand2 className="w-4 h-4" />
+              </Button>
             </div>
           </div>
+
+          {/* Mobile: view switcher */}
+          <div className="flex md:hidden items-center gap-1 mt-2">
+            <Button
+              variant={view === 'tabs' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('tabs')}
+              className="h-9 px-2 flex-1"
+              aria-label="نمای تب"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={view === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('all')}
+              className="h-9 px-2 flex-1"
+              aria-label="نمای لیست"
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={view === 'chart' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('chart')}
+              className="h-9 px-2 flex-1"
+              aria-label="نمای نمودار"
+            >
+              <PieIcon className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={view === 'priority' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('priority')}
+              className="h-9 px-2 flex-1"
+              aria-label="لیست اولویت پیشنهادی"
+            >
+              <Wand2 className="w-4 h-4" />
+            </Button>
+          </div>
+
           {(search || uniTypeFilter.size > 0 || minChance > 0) && (
             <div className="mt-3 text-xs text-muted-foreground flex items-center gap-2">
               <span>
@@ -1279,11 +1494,7 @@ function ResultView({
                 <span className="font-bold">{fa(allRows.length)}</span> رشته‌محل
               </span>
               <button
-                onClick={() => {
-                  setSearch('')
-                  setUniTypeFilter(new Set())
-                  setMinChance(0)
-                }}
+                onClick={resetFilters}
                 className="text-emerald-500 hover:text-emerald-400 inline-flex items-center gap-1"
               >
                 <RotateCcw className="w-3 h-3" /> پاک کردن همه
@@ -1292,6 +1503,93 @@ function ResultView({
           )}
         </CardContent>
       </Card>
+
+      {/* Mobile filter sheet */}
+      <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="text-right">فیلترها و مرتب‌سازی</SheetTitle>
+            <SheetDescription className="text-right">
+              جستجو، فیلتر نوع دانشگاه و مرتب‌سازی نتایج
+            </SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4 px-4 pb-6">
+            <div className="space-y-2">
+              <Label htmlFor="m-search">جستجو</Label>
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  id="m-search"
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="رشته، دانشگاه یا شهر..."
+                  aria-label="جستجوی رشته، دانشگاه یا شهر"
+                  className="pr-9 h-10"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>حداقل شانس: {fa(minChance)}٪</Label>
+              <input
+                type="range"
+                min={0}
+                max={99}
+                step={1}
+                value={minChance}
+                onChange={(e) => setMinChance(Number(e.target.value))}
+                aria-label="حداقل درصد شانس قبولی"
+                className="w-full accent-emerald-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>نوع دانشگاه</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {UNI_TYPES_LIST.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleUniType(t)}
+                    className={cn(
+                      'text-xs px-3 py-2 rounded-md border transition-colors text-right',
+                      uniTypeFilter.has(t)
+                        ? 'bg-emerald-500/15 border-emerald-500/50 text-foreground'
+                        : 'bg-background/50 border-border/60 text-muted-foreground'
+                    )}
+                  >
+                    {UNIVERSITY_TYPE_LABEL[t]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>مرتب‌سازی</Label>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                <SelectTrigger className="w-full" aria-label="مرتب‌سازی نتایج">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="chance">بیشترین شانس قبولی</SelectItem>
+                  <SelectItem value="cutoff-asc">سخت‌ترین ورود (رتبه کمتر)</SelectItem>
+                  <SelectItem value="cutoff-desc">آسان‌ترین ورود (رتبه بیشتر)</SelectItem>
+                  <SelectItem value="major">نام رشته (الفبا)</SelectItem>
+                  <SelectItem value="university">نام دانشگاه (الفبا)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={() => setMobileFiltersOpen(false)} className="flex-1">
+                اعمال فیلترها
+              </Button>
+              {(search || uniTypeFilter.size > 0 || minChance > 0) && (
+                <Button variant="outline" onClick={resetFilters}>
+                  <RotateCcw className="w-4 h-4" /> پاک کردن
+                </Button>
+              )}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* View content */}
       {view === 'tabs' && (
@@ -1455,7 +1753,231 @@ function ResultView({
           </CardContent>
         </Card>
       )}
+
+      {view === 'priority' && (
+        <PriorityListView
+          priorityList={priorityList}
+          groupInfo={groupInfo}
+          quotaInfo={quotaInfo}
+          rank={result.rank}
+          onToggleFav={onToggleFav}
+          isFav={isFav}
+          group={group}
+          quota={quota}
+          onCopy={onCopyPriorityList}
+        />
+      )}
     </div>
+  )
+}
+
+function PriorityListView({
+  priorityList,
+  groupInfo,
+  quotaInfo,
+  rank,
+  onToggleFav,
+  isFav,
+  group,
+  quota,
+  onCopy,
+}: {
+  priorityList: PriorityList
+  groupInfo: { key: GroupKey; label: string; emoji: string; color: string }
+  quotaInfo: { key: QuotaKey; label: string; description: string }
+  rank: number
+  onToggleFav: (row: EstimatedRow, g: GroupKey, q: QuotaKey, rank: number) => void
+  isFav: (key: string) => boolean
+  group: GroupKey
+  quota: QuotaKey
+  onCopy: () => void
+}) {
+  const strategyMeta = {
+    safe: {
+      label: 'امن (خوش‌بینانه)',
+      tone: 'emerald',
+      desc: '۸ رشته‌محل با بالاترین شانس قبولی — برای اطمینان از پذیرش',
+      icon: <CheckCircle2 className="w-4 h-4" />,
+    },
+    logical: {
+      label: 'منطقی',
+      tone: 'amber',
+      desc: '۸ رشته‌محل نزدیک به آخرین رتبه قبولی — قلب لیست انتخاب رشته',
+      icon: <Scale className="w-4 h-4" />,
+    },
+    reach: {
+      label: 'شانس (بدبینانه)',
+      tone: 'rose',
+      desc: '۸ رشته‌محل با رتبه پایین‌تر — برای زنجیره امن در انتهای لیست',
+      icon: <AlertTriangle className="w-4 h-4" />,
+    },
+  } as const
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <Wand2 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-base">لیست پیشنهادی اولویت انتخاب رشته</CardTitle>
+                <CardDescription className="text-xs">
+                  {groupInfo.emoji} {groupInfo.label} — {quotaInfo.label} — رتبه{' '}
+                  <span className="font-mono font-bold">{faFmt(rank)}</span>
+                </CardDescription>
+              </div>
+            </div>
+            <Button onClick={onCopy} variant="outline" size="sm">
+              <Share2 className="w-3.5 h-3.5" />
+              کپی لیست
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+            <Lightbulb className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground leading-6">
+              این لیست بر اساس استراتژی استاندارد <strong className="text-foreground">۳ دسته ۸ تایی</strong> پیشنهاد می‌شود:
+              ۸ انتخاب امن، ۸ انتخاب منطقی و ۸ انتخاب شانس. مجموعاً{' '}
+              <strong className="text-foreground">{fa(priorityList.items.length)} رشته‌محل</strong> — کافی برای
+              پر کردن فرم انتخاب رشته. توجه: این یک پیشنهاد الگوریتمی است؛ ترجیحات شخصی خود را نیز لحاظ کنید.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {(['safe', 'logical', 'reach'] as const).map((strategy) => {
+        const meta = strategyMeta[strategy]
+        const items = priorityList[strategy]
+        if (items.length === 0) return null
+        const toneClass =
+          meta.tone === 'emerald'
+            ? 'border-emerald-500/30 from-emerald-500/5'
+            : meta.tone === 'amber'
+              ? 'border-amber-500/30 from-amber-500/5'
+              : 'border-rose-500/30 from-rose-500/5'
+        const textTone =
+          meta.tone === 'emerald'
+            ? 'text-emerald-500'
+            : meta.tone === 'amber'
+              ? 'text-amber-500'
+              : 'text-rose-500'
+        return (
+          <Card key={strategy} className={cn('border bg-gradient-to-br to-card', toneClass)}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className={cn('p-1.5 rounded-lg bg-foreground/5', textTone)}>
+                    {meta.icon}
+                  </span>
+                  <div>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      {meta.label}
+                      <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', textTone)}>
+                        {fa(items.length)} مورد
+                      </Badge>
+                    </CardTitle>
+                    <CardDescription className="text-[11px]">{meta.desc}</CardDescription>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ol className="divide-y divide-border/60">
+                {items.map((p) => (
+                  <PriorityRow
+                    key={`${p.major}-${p.university}-${p.priority}`}
+                    item={p}
+                    onToggleFav={(r) => onToggleFav(r, group, quota, rank)}
+                    isFav={(r) => isFav(rowKey(r, group, quota))}
+                    strategyTone={meta.tone}
+                  />
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
+
+function PriorityRow({
+  item,
+  onToggleFav,
+  isFav,
+  strategyTone,
+}: {
+  item: PriorityList['items'][number]
+  onToggleFav: (r: EstimatedRow) => void
+  isFav: (r: EstimatedRow) => boolean
+  strategyTone: 'emerald' | 'amber' | 'rose'
+}) {
+  const chanceColor =
+    item.chance >= 70 ? 'text-emerald-500' : item.chance >= 40 ? 'text-amber-500' : 'text-rose-500'
+  const chanceBg =
+    strategyTone === 'emerald'
+      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+      : strategyTone === 'amber'
+        ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+        : 'bg-rose-500/10 border-rose-500/30 text-rose-500'
+  const fav = isFav(item)
+  return (
+    <motion.li
+      initial={{ opacity: 0, x: 10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.25, delay: Math.min(item.priority * 0.02, 0.3) }}
+      className="flex items-start gap-3 p-3 hover:bg-foreground/[0.03] transition-colors"
+    >
+      <div
+        className={cn(
+          'shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center font-mono font-bold tabular-nums text-sm',
+          chanceBg
+        )}
+      >
+        {fa(item.priority)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm leading-6 mb-0.5 truncate">{item.major}</p>
+            <p className="text-xs text-muted-foreground leading-5 truncate">
+              {item.university}
+              {item.city ? ` — ${item.city}` : ''}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                {UNIVERSITY_TYPE_LABEL[item.universityType]}
+              </Badge>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                آخرین رتبه: <span className="font-mono">{faFmt(item.cutoff)}</span>
+              </Badge>
+            </div>
+          </div>
+          <div className="text-left shrink-0 flex flex-col items-end gap-1">
+            <div className={cn('text-lg font-extrabold tabular-nums leading-none', chanceColor)}>
+              {fa(item.chance)}٪
+            </div>
+            <button
+              type="button"
+              onClick={() => onToggleFav(item)}
+              aria-label={fav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
+              className={cn(
+                'p-1 rounded-md transition-colors',
+                fav
+                  ? 'text-rose-500 hover:bg-rose-500/10'
+                  : 'text-muted-foreground hover:text-rose-500 hover:bg-rose-500/5'
+              )}
+            >
+              <Heart className={cn('w-3.5 h-3.5', fav && 'fill-rose-500')} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.li>
   )
 }
 

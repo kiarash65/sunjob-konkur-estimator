@@ -356,6 +356,13 @@ export async function GET(req: NextRequest) {
           <button class="btn secondary" type="button" id="printBtn">🖨️ چاپ / PDF</button>
           <span class="muted" style="font-size: 12px;">همه‌چیز آفلاین در همین فایل کار می‌کند.</span>
         </div>
+        <div class="full" style="display:flex; gap: 8px; flex-wrap: wrap; align-items:center;">
+          <span class="muted" style="font-size: 12px;">صدور خروجی نتایج:</span>
+          <button class="btn secondary" type="button" id="csvBtn" style="padding: 6px 12px; font-size: 12px;">📊 CSV (Excel)</button>
+          <button class="btn secondary" type="button" id="jsonBtn" style="padding: 6px 12px; font-size: 12px;">📄 JSON</button>
+          <button class="btn secondary" type="button" id="priorityBtn" style="padding: 6px 12px; font-size: 12px;">✨ لیست اولویت پیشنهادی</button>
+          <button class="btn secondary" type="button" id="copyPriorityBtn" style="padding: 6px 12px; font-size: 12px;">📋 کپی لیست اولویت</button>
+        </div>
         <div class="full"><div id="errBox" class="error" style="display:none"></div></div>
       </form>
     </section>
@@ -394,6 +401,22 @@ export async function GET(req: NextRequest) {
       <div class="bucket pessimistic" id="bPes">
         <div class="head"><span>⚠️ انتخاب‌های بدبینانه</span><span id="cPes" class="muted"></span></div>
         <div id="rowsPes"></div>
+      </div>
+
+      <!-- Priority list (hidden until shown) -->
+      <div id="priorityArea" style="display:none; margin-top: 18px;">
+        <div class="card" style="border-color: rgba(16,185,129,0.3); background: linear-gradient(135deg, rgba(16,185,129,0.05), transparent); padding: 18px; margin-bottom: 12px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom: 8px;">
+            <span style="font-size: 20px;">✨</span>
+            <h3 style="margin: 0; font-size: 16px; color: #5eead4;">لیست پیشنهادی اولویت انتخاب رشته</h3>
+          </div>
+          <p id="priorityMeta" style="margin: 0 0 10px; font-size: 12px; color: var(--muted);"></p>
+          <p style="margin: 0; font-size: 12px; color: var(--muted); line-height: 1.8;">
+            💡 این لیست بر اساس استراتژی استاندارد <strong>۳ دسته ۸ تایی</strong> پیشنهاد می‌شود:
+            ۸ انتخاب امن، ۸ انتخاب منطقی و ۸ انتخاب شانس.
+          </p>
+        </div>
+        <div id="priorityList"></div>
       </div>
 
       <div class="tips">
@@ -669,6 +692,221 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
 
   document.getElementById('printBtn').addEventListener('click', function () {
     window.print();
+  });
+
+  // ───── Export CSV / JSON ─────
+  function downloadBlob(content, filename, mime) {
+    var blob = new Blob([content], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  }
+
+  function resultToCSVLocal(result) {
+    var headers = ['اولویت پیشنهادی', 'دسته', 'رشته', 'دانشگاه', 'نوع دانشگاه', 'شهر', 'آخرین رتبه قبولی', 'شانس قبولی (٪)', 'اختلاف رتبه با آخرین قبولی'];
+    var all = result.optimistic.concat(result.realistic, result.pessimistic);
+    var bucketOrder = { optimistic: 0, realistic: 1, pessimistic: 2 };
+    var bucketLabel = { optimistic: 'خوش‌بینانه', realistic: 'منطقی', pessimistic: 'بدبینانه' };
+    all.sort(function (a, b) {
+      var bo = bucketOrder[a.bucket] - bucketOrder[b.bucket];
+      if (bo !== 0) return bo;
+      return b.chance - a.chance;
+    });
+    var rows = all.map(function (r, i) {
+      return [
+        i + 1,
+        bucketLabel[r.bucket],
+        r.major,
+        r.university,
+        uniLabel(r.universityType),
+        r.city || '',
+        r.cutoff,
+        r.chance,
+        r.rankDistance > 0 ? '+' + r.rankDistance + ' (بهتر)' : r.rankDistance + ' (بدتر)'
+      ];
+    });
+    var allRows = [headers].concat(rows);
+    var csv = allRows.map(function (row) {
+      return row.map(function (cell) {
+        var s = String(cell);
+        if (/[",\\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      }).join(',');
+    }).join('\\n');
+    return '\\uFEFF' + csv; // BOM for Excel
+  }
+
+  function resultToJSONLocal(result) {
+    var all = result.optimistic.concat(result.realistic, result.pessimistic);
+    var payload = {
+      meta: {
+        group: result.group,
+        quota: result.quota,
+        rank: result.rank,
+        totalChoices: result.totalChoices,
+        reachableCount: result.summary.reachableCount,
+        medianRank: result.summary.medianRank,
+        bestChance: result.summary.bestChance ? {
+          major: result.summary.bestChance.major,
+          university: result.summary.bestChance.university,
+          chance: result.summary.bestChance.chance
+        } : null,
+        generatedAt: new Date().toISOString()
+      },
+      rows: all.map(function (r) {
+        return {
+          major: r.major,
+          university: r.university,
+          universityType: uniLabel(r.universityType),
+          city: r.city,
+          cutoff: r.cutoff,
+          chance: r.chance,
+          bucket: r.bucket,
+          rankDistance: r.rankDistance
+        };
+      })
+    };
+    return JSON.stringify(payload, null, 2);
+  }
+
+  // ───── Build priority list (mirrors lib/konkur-data.ts) ─────
+  function buildPriorityListLocal(result) {
+    var safe = result.optimistic.slice().sort(function (a, b) { return b.chance - a.chance; }).slice(0, 8).map(function (r, i) {
+      return Object.assign({}, r, { priority: i + 1, strategy: 'safe' });
+    });
+    var logical = result.realistic.slice().sort(function (a, b) { return Math.abs(a.rankDistance) - Math.abs(b.rankDistance); }).slice(0, 8).map(function (r, i) {
+      return Object.assign({}, r, { priority: safe.length + i + 1, strategy: 'logical' });
+    });
+    var reach = result.pessimistic.slice().sort(function (a, b) { return b.chance - a.chance; }).slice(0, 8).map(function (r, i) {
+      return Object.assign({}, r, { priority: safe.length + logical.length + i + 1, strategy: 'reach' });
+    });
+    var all = safe.concat(logical, reach).map(function (r, i) {
+      return Object.assign({}, r, { priority: i + 1 });
+    });
+    return {
+      items: all,
+      safe: all.filter(function (r) { return r.strategy === 'safe'; }),
+      logical: all.filter(function (r) { return r.strategy === 'logical'; }),
+      reach: all.filter(function (r) { return r.strategy === 'reach'; })
+    };
+  }
+
+  function priorityRowHTML(p) {
+    var chanceColor = p.chance >= 70 ? '#10b981' : (p.chance >= 40 ? '#f59e0b' : '#ef4444');
+    var stratColor = p.strategy === 'safe' ? '#10b981' : (p.strategy === 'logical' ? '#f59e0b' : '#ef4444');
+    var stratLabel = p.strategy === 'safe' ? 'امن' : (p.strategy === 'logical' ? 'منطقی' : 'شانس');
+    return ''
+      + '<div class="row" style="display:flex; gap:12px; align-items:flex-start;">'
+      + '  <div style="shrink:0; width:36px; height:36px; border-radius:8px; border:1px solid ' + stratColor + '40; background:' + stratColor + '1a; color:' + stratColor + '; display:flex; align-items:center; justify-content:center; font-weight:700; font-family:monospace;">' + fa(p.priority) + '</div>'
+      + '  <div style="flex:1; min-width:0;">'
+      + '    <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">'
+      + '      <div style="flex:1; min-width:0;">'
+      + '        <div class="major" style="font-weight:700; font-size:14px; margin-bottom:2px;">' + p.major + '</div>'
+      + '        <div class="uni" style="font-size:12px; color:var(--muted); margin-bottom:4px;">' + p.university + (p.city ? ' — ' + p.city : '') + '</div>'
+      + '        <div style="display:flex; gap:6px; flex-wrap:wrap;">'
+      + '          <span class="badge">' + uniLabel(p.universityType) + '</span>'
+      + '          <span class="badge">آخرین رتبه: ' + faFmt(p.cutoff) + '</span>'
+      + '          <span class="badge" style="border-color:' + stratColor + '40; color:' + stratColor + ';">' + stratLabel + '</span>'
+      + '        </div>'
+      + '      </div>'
+      + '      <div style="text-align:left; shrink:0;">'
+      + '        <div style="font-size:18px; font-weight:800; color:' + chanceColor + '; font-variant-numeric: tabular-nums;">' + fa(p.chance) + '٪</div>'
+      + '      </div>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>';
+  }
+
+  function renderPriorityList(result) {
+    var priority = buildPriorityListLocal(result);
+    var meta = document.getElementById('priorityMeta');
+    var gLabel = GROUP_LABELS[result.group] || result.group;
+    var qLabel = QUOTA_LABELS[result.quota] || result.quota;
+    meta.textContent = gLabel + ' — ' + qLabel + ' — رتبه ' + faFmt(result.rank) + ' (مجموعاً ' + fa(priority.items.length) + ' رشته‌محل)';
+
+    var strategies = [
+      { key: 'safe', label: '✅ امن (خوش‌بینانه)', desc: '۸ رشته‌محل با بالاترین شانس قبولی', color: '#10b981' },
+      { key: 'logical', label: '⚖️ منطقی', desc: '۸ رشته‌محل نزدیک به آخرین رتبه قبولی', color: '#f59e0b' },
+      { key: 'reach', label: '⚠️ شانس (بدبینانه)', desc: '۸ رشته‌محل با رتبه پایین‌تر', color: '#ef4444' }
+    ];
+    var html = '';
+    strategies.forEach(function (s) {
+      var items = priority[s.key];
+      if (!items.length) return;
+      html += '<div class="bucket" style="border-color:' + s.color + '40; background: linear-gradient(90deg, ' + s.color + '15, transparent); border-radius: 12px; overflow:hidden; margin-bottom: 12px;">';
+      html += '<div class="head" style="background: linear-gradient(90deg, ' + s.color + '18, transparent); color:' + s.color + '; padding: 10px 14px; font-weight:700; border-bottom:1px solid ' + s.color + '30;"><span>' + s.label + ' (' + fa(items.length) + ')</span></div>';
+      html += '<div style="padding: 0;">';
+      items.forEach(function (p) { html += priorityRowHTML(p); });
+      html += '</div></div>';
+    });
+    document.getElementById('priorityList').innerHTML = html;
+    return priority;
+  }
+
+  function togglePriorityView() {
+    if (!currentResult) {
+      toast('ابتدا یک تخمین انجام دهید');
+      return;
+    }
+    var area = document.getElementById('priorityArea');
+    if (area.style.display === 'none') {
+      renderPriorityList(currentResult);
+      area.style.display = 'block';
+      area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast('✨ لیست اولویت نمایش داده شد');
+    } else {
+      area.style.display = 'none';
+      toast('لیست اولویت بسته شد');
+    }
+  }
+
+  document.getElementById('csvBtn').addEventListener('click', function () {
+    if (!currentResult) { toast('ابتدا یک تخمین انجام دهید'); return; }
+    var csv = resultToCSVLocal(currentResult);
+    var fname = 'taghmin-' + currentResult.group + '-' + currentResult.quota + '-' + currentResult.rank + '.csv';
+    downloadBlob(csv, fname, 'text/csv;charset=utf-8');
+    toast('✔ فایل CSV دانلود شد');
+  });
+
+  document.getElementById('jsonBtn').addEventListener('click', function () {
+    if (!currentResult) { toast('ابتدا یک تخمین انجام دهید'); return; }
+    var json = resultToJSONLocal(currentResult);
+    var fname = 'taghmin-' + currentResult.group + '-' + currentResult.quota + '-' + currentResult.rank + '.json';
+    downloadBlob(json, fname, 'application/json;charset=utf-8');
+    toast('✔ فایل JSON دانلود شد');
+  });
+
+  document.getElementById('priorityBtn').addEventListener('click', togglePriorityView);
+
+  document.getElementById('copyPriorityBtn').addEventListener('click', function () {
+    if (!currentResult) { toast('ابتدا یک تخمین انجام دهید'); return; }
+    var priority = buildPriorityListLocal(currentResult);
+    var lines = priority.items.map(function (p) {
+      var strat = p.strategy === 'safe' ? 'امن' : (p.strategy === 'logical' ? 'منطقی' : 'شانس');
+      return p.priority + '. ' + p.major + ' — ' + p.university + ' (' + p.chance + '٪ — ' + strat + ')';
+    });
+    var gLabel = GROUP_LABELS[currentResult.group] || currentResult.group;
+    var qLabel = QUOTA_LABELS[currentResult.quota] || currentResult.quota;
+    var text = 'لیست پیشنهادی اولویت انتخاب رشته — ' + gLabel + ' / ' + qLabel + ' / رتبه ' + faFmt(currentResult.rank) + '\\n\\n' + lines.join('\\n');
+    try {
+      navigator.clipboard.writeText(text).then(function () {
+        toast('✔ لیست اولویت در کلیپ‌بورد کپی شد (' + fa(priority.items.length) + ' مورد)');
+      }, function () {
+        // Fallback for older browsers
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); toast('✔ لیست اولویت کپی شد'); } catch (e) { toast('کپی ناموفق بود'); }
+        ta.remove();
+      });
+    } catch (e) {
+      toast('کپی ناموفق بود');
+    }
   });
 
   // preselect from query if provided
