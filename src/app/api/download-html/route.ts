@@ -396,6 +396,7 @@ export async function GET(req: NextRequest) {
           <button class="btn secondary" type="button" id="priorityBtn" style="padding: 6px 12px; font-size: 12px;">✨ لیست اولویت پیشنهادی</button>
           <button class="btn secondary" type="button" id="copyPriorityBtn" style="padding: 6px 12px; font-size: 12px;">📋 کپی لیست اولویت</button>
           <button class="btn secondary" type="button" id="chartBtn" style="padding: 6px 12px; font-size: 12px;">📈 نمودار تحلیل</button>
+          <button class="btn secondary" type="button" id="compareBtn" style="padding: 6px 12px; font-size: 12px;">⚖️ مقایسه رتبه‌ها</button>
         </div>
         <div class="full"><div id="errBox" class="error" style="display:none"></div></div>
       </form>
@@ -488,6 +489,28 @@ export async function GET(req: NextRequest) {
           <h3 style="margin: 0 0 4px; font-size: 16px;">📈 تحلیل توزیع شانس قبولی</h3>
           <p style="margin: 0 0 16px; font-size: 12px; color: var(--muted);">نمودار توزیع درصد شانس قبولی شما در رشته‌محل‌های مختلف</p>
           <div id="chartContent"></div>
+        </div>
+      </div>
+
+      <!-- Compare view (hidden until shown) -->
+      <div id="compareArea" style="display:none; margin-top: 18px;">
+        <div class="card" style="padding: 18px;">
+          <h3 style="margin: 0 0 4px; font-size: 16px;">⚖️ مقایسه رتبه‌ها</h3>
+          <p style="margin: 0 0 12px; font-size: 12px; color: var(--muted);">رتبه فعلی شما را با یک رتبه دیگر مقایسه کنید</p>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; padding:10px; border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,0.03); margin-bottom:12px;">
+            <div style="flex:1; min-width:160px;">
+              <label for="compareRankInput" style="display:block; font-size:11px; color:var(--muted); margin-bottom:4px;">رتبه برای مقایسه (همان گروه و سهمیه)</label>
+              <input id="compareRankInput" type="number" inputmode="numeric" min="1" placeholder="مثلاً ۵۰۰۰" style="width:100%; background:rgba(255,255,255,.04); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:8px 12px; font:inherit; outline:none; font-family:monospace;" />
+            </div>
+            <button id="runCompareBtn" type="button" class="btn" style="padding: 8px 16px; font-size: 13px;">⚖️ مقایسه</button>
+            <button id="clearCompareBtn" type="button" class="btn secondary" style="padding: 8px 16px; font-size: 13px; display:none;">✕ پاک</button>
+          </div>
+          <div id="compareContent">
+            <div style="text-align:center; padding: 24px; color: var(--muted); font-size: 13px;">
+              <div style="font-size: 28px; margin-bottom: 8px;">⚖️</div>
+              یک رتبه دیگر وارد کنید و دکمه «مقایسه» را بزنید
+            </div>
+          </div>
         </div>
       </div>
 
@@ -609,11 +632,30 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
     var chanceColor = r.chance >= 70 ? '#10b981' : (r.chance >= 40 ? '#f59e0b' : '#ef4444');
     var key = rowKeyFor(r);
     var isFav = !!favorites[key];
+    var rowId = 'row-' + Math.random().toString(36).substr(2, 9);
+    // Advice text based on bucket and chance
+    var advice;
+    if (r.bucket === 'optimistic') {
+      advice = r.chance >= 90 ? 'انتخاب بسیار امن — این رشته‌محل را در اولویت‌های بالای لیست خود قرار دهید.' : 'انتخاب امن — شانس قبولی بالاست.';
+    } else if (r.bucket === 'realistic') {
+      advice = 'انتخاب منطقی — رتبه شما نزدیک به آخرین رتبه قبولی است. حتماً در لیست اولویت‌ها قرار دهید.';
+    } else {
+      advice = 'انتخاب شانسی — رتبه شما از آخرین رتبه قبولی بدتر است. به‌عنوان گزینه پشتیبان در انتهای لیست استفاده کنید.';
+    }
+    // Rank ratio
+    var rankRatio = r.cutoff > 0 ? (r.rankDistance / r.cutoff) * 100 : 0;
+    var rankRatioText = rankRatio > 0 ? 'رتبه شما ' + fa(Math.round(Math.abs(rankRatio))) + '٪ بهتر از آخرین رتبه قبولی است'
+      : rankRatio < 0 ? 'رتبه شما ' + fa(Math.round(Math.abs(rankRatio))) + '٪ بدتر از آخرین رتبه قبولی است'
+      : 'رتبه شما دقیقاً برابر با آخرین رتبه قبولی است';
+    var ratioColor = rankRatio > 0 ? '#10b981' : rankRatio < 0 ? '#ef4444' : 'var(--muted)';
     return ''
-      + '<div class="row" data-fav-key="' + key.replace(/"/g, '&quot;') + '">'
-      + '  <div class="top">'
-      + '    <span class="major">' + r.major + '</span>'
+      + '<div class="row" data-fav-key="' + key.replace(/"/g, '&quot;') + '" data-row-id="' + rowId + '">'
+      + '  <div class="top" style="display:flex; flex-wrap:wrap; align-items:flex-start; gap:6px;">'
+      + '    <span class="major" style="flex:1; min-width:0;">' + r.major + '</span>'
       + '    <button class="fav-btn" data-fav-key="' + key.replace(/"/g, '&quot;') + '" aria-label="' + (isFav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها') + '" style="background:none; border:0; cursor:pointer; padding:4px; color:' + (isFav ? '#ef4444' : 'var(--muted)') + ';" title="' + (isFav ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها') + '">' + (isFav ? '❤' : '♡') + '</button>'
+      + '    <button class="expand-btn" data-row-id="' + rowId + '" aria-label="نمایش جزئیات" aria-expanded="false" style="background:none; border:0; cursor:pointer; padding:4px; color:var(--muted); transition:transform 0.2s;" title="نمایش جزئیات">▼</button>'
+      + '  </div>'
+      + '  <div style="display:flex; flex-wrap:wrap; gap:6px; margin: 4px 0;">'
       + '    <span class="badge">🎓 ' + r.university + '</span>'
       + '    <span class="badge">🏷️ ' + uniLabel(r.universityType) + '</span>'
       + '    <span class="badge">📍 ' + (r.city || '—') + '</span>'
@@ -621,6 +663,37 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
       + '  <div class="uni">آخرین رتبه قبولی سال گذشته: ' + faFmt(r.cutoff) + '</div>'
       + '  <div class="chance-row"><span>شانس قبولی شما</span><span style="color:' + chanceColor + '; font-weight:700">' + fa(r.chance) + '٪</span></div>'
       + '  <div class="chance-bar"><div style="width:' + r.chance + '%; background:linear-gradient(90deg,#f59e0b,' + chanceColor + ')"></div></div>'
+      // Expandable details (hidden by default)
+      + '  <div class="row-details" id="' + rowId + '-details" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">'
+      // Advice
+      + '    <div style="display:flex; gap:6px; padding:8px; border-radius:6px; background:rgba(255,255,255,0.03); margin-bottom:6px;">'
+      + '      <span style="font-size:14px; flex-shrink:0;">💡</span>'
+      + '      <p style="margin:0; font-size:11px; color:var(--text-soft); line-height:1.6;">' + advice + '</p>'
+      + '    </div>'
+      // Rank ratio bar
+      + '    <div style="padding:8px; border-radius:6px; background:rgba(255,255,255,0.03); margin-bottom:6px;">'
+      + '      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">'
+      + '        <span style="font-size:11px; color:var(--muted);">مقایسه با آخرین رتبه قبولی</span>'
+      + '        <span style="font-size:11px; font-weight:700; color:' + ratioColor + ';">' + (rankRatio > 0 ? '+' : '') + fa(Math.round(Math.abs(rankRatio))) + '٪</span>'
+      + '      </div>'
+      + '      <div style="position:relative; height:6px; background:rgba(255,255,255,0.07); border-radius:3px; overflow:hidden;">'
+      + '        <div style="position:absolute; top:0; bottom:0; left:50%; width:1px; background:var(--text); opacity:0.4;"></div>'
+      + '        <div style="position:absolute; top:0; bottom:0; border-radius:3px; background:' + ratioColor + ';' + (rankRatio >= 0 ? 'left:50%;' : 'right:50%;') + ' width:' + Math.min(50, Math.abs(rankRatio) / 2) + '%;"></div>'
+      + '      </div>'
+      + '      <p style="margin:4px 0 0; font-size:10px; color:var(--muted);">' + rankRatioText + '</p>'
+      + '    </div>'
+      // Stats row
+      + '    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">'
+      + '      <div style="padding:8px; border-radius:6px; background:rgba(255,255,255,0.03);">'
+      + '        <div style="font-size:10px; color:var(--muted);">آخرین رتبه قبولی</div>'
+      + '        <div style="font-family:monospace; font-weight:700; font-variant-numeric:tabular-nums;">' + faFmt(r.cutoff) + '</div>'
+      + '      </div>'
+      + '      <div style="padding:8px; border-radius:6px; background:rgba(255,255,255,0.03);">'
+      + '        <div style="font-size:10px; color:var(--muted);">نوع دانشگاه</div>'
+      + '        <div style="font-weight:700;">' + uniLabel(r.universityType) + '</div>'
+      + '      </div>'
+      + '    </div>'
+      + '  </div>'
       + '</div>';
   }
 
@@ -1183,6 +1256,28 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
     }
   });
 
+  // Event delegation for expand buttons (row details toggle)
+  document.addEventListener('click', function (e) {
+    var btnEl = e.target.closest && e.target.closest('.expand-btn');
+    if (!btnEl) return;
+    var rowId = btnEl.getAttribute('data-row-id');
+    if (!rowId) return;
+    var details = document.getElementById(rowId + '-details');
+    if (!details) return;
+    var isExpanded = details.style.display !== 'none';
+    if (isExpanded) {
+      details.style.display = 'none';
+      btnEl.setAttribute('aria-expanded', 'false');
+      btnEl.setAttribute('aria-label', 'نمایش جزئیات');
+      btnEl.style.transform = 'rotate(0deg)';
+    } else {
+      details.style.display = 'block';
+      btnEl.setAttribute('aria-expanded', 'true');
+      btnEl.setAttribute('aria-label', 'بستن جزئیات');
+      btnEl.style.transform = 'rotate(180deg)';
+    }
+  });
+
   // ───── Export CSV / JSON ─────
   function downloadBlob(content, filename, mime) {
     var blob = new Blob([content], { type: mime });
@@ -1492,6 +1587,106 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
       toast('نمودار بسته شد');
     }
   }
+
+  // ───── Comparison view (offline — uses local estimate function) ─────
+  function toggleCompareView() {
+    if (!currentResult) {
+      toast('ابتدا یک تخمین انجام دهید');
+      return;
+    }
+    var area = document.getElementById('compareArea');
+    if (area.style.display === 'none') {
+      area.style.display = 'block';
+      area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast('⚖️ نمای مقایسه نمایش داده شد');
+    } else {
+      area.style.display = 'none';
+      toast('نمای مقایسه بسته شد');
+    }
+  }
+
+  function runCompareLocal() {
+    if (!currentResult) {
+      toast('ابتدا یک تخمین انجام دهید');
+      return;
+    }
+    var rankInput = document.getElementById('compareRankInput');
+    var r = parseInt(rankInput.value, 10);
+    if (!r || r <= 0) {
+      toast('رتبه مقایسه نامعتبر است');
+      return;
+    }
+    if (r === currentResult.rank) {
+      toast('رتبه مقایسه با رتبه فعلی یکسان است');
+      return;
+    }
+    var compareRes = estimate(currentResult.group, currentResult.quota, r);
+    var baseStats = computeStatsLocal(currentResult);
+    var compareStats = computeStatsLocal(compareRes);
+    var metrics = [
+      { key: 'reachable', label: 'انتخاب در دسترس', betterIsHigher: true, isPercent: false },
+      { key: 'outOfReach', label: 'خارج از دسترس', betterIsHigher: false, isPercent: false },
+      { key: 'averageChance', label: 'میانگین شانس', betterIsHigher: true, isPercent: true },
+      { key: 'userPercentile', label: 'صدک شما', betterIsHigher: false, isPercent: true },
+      { key: 'mean', label: 'میانگین رتبه', betterIsHigher: false, isPercent: false },
+      { key: 'median', label: 'میانه رتبه', betterIsHigher: false, isPercent: false }
+    ];
+    function fmtVal(s, key, isPercent) {
+      var v = s[key];
+      return isPercent ? fa(v) + '٪' : faFmt(v);
+    }
+    var html = '<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px;">';
+    html += '<thead><tr style="border-bottom:1px solid var(--border);">';
+    html += '<th style="text:right; padding:8px; font-size:11px; color:var(--muted);">معیار</th>';
+    html += '<th style="text:center; padding:8px; min-width:100px;"><div style="font-size:10px; color:var(--muted);">رتبه فعلی</div><div style="font-weight:700;">' + faFmt(currentResult.rank) + '</div></th>';
+    html += '<th style="text:center; padding:8px; min-width:100px;"><div style="font-size:10px; color:var(--muted);">رتبه مقایسه</div><div style="font-weight:700;">' + faFmt(r) + '</div></th>';
+    html += '<th style="text:center; padding:8px; font-size:11px; color:var(--muted);">تفاوت</th>';
+    html += '</tr></thead><tbody>';
+    metrics.forEach(function (m) {
+      var v1 = baseStats[m.key];
+      var v2 = compareStats[m.key];
+      var diff = v2 - v1;
+      var isBetter = m.betterIsHigher ? diff > 0 : diff < 0;
+      var isWorse = m.betterIsHigher ? diff < 0 : diff > 0;
+      var diffColor = isBetter ? '#10b981' : isWorse ? '#ef4444' : 'var(--muted)';
+      var diffSign = diff > 0 ? '+' : '';
+      var diffText = diff === 0 ? '—' : diffSign + fa(Math.abs(diff)) + (m.isPercent ? '٪' : '');
+      html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">';
+      html += '<td style="padding:8px; font-size:11px; color:var(--muted);">' + m.label + '</td>';
+      html += '<td style="text:center; padding:8px; font-family:monospace; font-weight:700; font-variant-numeric:tabular-nums;">' + fmtVal(baseStats, m.key, m.isPercent) + '</td>';
+      html += '<td style="text:center; padding:8px; font-family:monospace; font-weight:700; font-variant-numeric:tabular-nums;">' + fmtVal(compareStats, m.key, m.isPercent) + '</td>';
+      html += '<td style="text:center; padding:8px; font-family:monospace; font-size:11px; font-weight:700; color:' + diffColor + '; font-variant-numeric:tabular-nums;">' + diffText + '</td>';
+      html += '</tr>';
+    });
+    // Tier row
+    html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">';
+    html += '<td style="padding:8px; font-size:11px; color:var(--muted);">طبقه‌بندی</td>';
+    html += '<td style="text:center; padding:8px;"><span style="font-size:10px; padding:2px 8px; border-radius:4px; border:1px solid;">' + baseStats.tierLabel + '</span></td>';
+    html += '<td style="text:center; padding:8px;"><span style="font-size:10px; padding:2px 8px; border-radius:4px; border:1px solid;">' + compareStats.tierLabel + '</span></td>';
+    html += '<td style="text:center; padding:8px; font-size:11px; color:var(--muted);">—</td>';
+    html += '</tr>';
+    html += '</tbody></table></div>';
+    document.getElementById('compareContent').innerHTML = html;
+    document.getElementById('clearCompareBtn').style.display = 'inline-flex';
+    toast('⚖️ مقایسه با رتبه ' + faFmt(r) + ' انجام شد');
+  }
+
+  function clearCompare() {
+    document.getElementById('compareRankInput').value = '';
+    document.getElementById('clearCompareBtn').style.display = 'none';
+    document.getElementById('compareContent').innerHTML = ''
+      + '<div style="text-align:center; padding: 24px; color: var(--muted); font-size: 13px;">'
+      + '<div style="font-size: 28px; margin-bottom: 8px;">⚖️</div>'
+      + 'یک رتبه دیگر وارد کنید و دکمه «مقایسه» را بزنید'
+      + '</div>';
+  }
+
+  document.getElementById('compareBtn').addEventListener('click', toggleCompareView);
+  document.getElementById('runCompareBtn').addEventListener('click', runCompareLocal);
+  document.getElementById('clearCompareBtn').addEventListener('click', clearCompare);
+  document.getElementById('compareRankInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); runCompareLocal(); }
+  });
 
   document.getElementById('csvBtn').addEventListener('click', function () {
     if (!currentResult) { toast('ابتدا یک تخمین انجام دهید'); return; }

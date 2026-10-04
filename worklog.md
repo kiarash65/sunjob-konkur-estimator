@@ -673,3 +673,65 @@ Stage Summary:
 - Four new feature groups added to the main app: Row click → expand (advice + rank ratio bar + stats), Tooltip on chance%, Open Graph + Twitter meta tags, Shimmer loading skeleton.
 - ESLint clean; dev server stable; no runtime errors.
 - Downloadable HTML verified still working with all previously-added features.
+
+---
+Task ID: 9
+Agent: cron-review (webDevReview)
+Task: QA pass + port comparison view + row expand to downloadable HTML
+
+## Current project status description/assessment
+The project was feature-complete after Task 8 with: rank estimator, filter/search/sort (including city), favorites, history, chart view, print/PDF, keyboard shortcuts (? help dialog), deep-link sharing, comparison view, row expand with advice + rank ratio bar + stats, tooltip on chance%, Open Graph meta tags, shimmer loading skeleton, downloadable offline HTML with CSV/JSON/priority-list/favorites/charts/city-filter/collapsible-stats-card/quick-start/theme-toggle features. ESLint clean, no runtime errors. The recommended next-phase work items from Task 8 were:
+- PWA / offline support for main page.
+- Real Sanjesh data.
+- Sort dropdown SSR quirk.
+- Comparison view could be ported to the downloadable HTML.
+- Row expand could be ported to the downloadable HTML too.
+
+## QA findings (via agent-browser + curl)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Downloadable HTML works offline (38 results, all features present).
+- All previously-added features verified working.
+- ESLint passes; no runtime errors in dev.log.
+
+## New features ported to downloadable HTML (`/api/download-html`)
+1. **Comparison view** — `#compareArea` section toggled by "⚖️ مقایسه رتبه‌ها" button:
+   - Input field for a second rank (same group + quota), "⚖️ مقایسه" button, "✕ پاک" button.
+   - Enter key in the input triggers compare.
+   - Computes the comparison estimate **locally** (using the offline `estimate()` function — no server fetch needed).
+   - Renders a side-by-side table comparing 6 metrics (reachable, outOfReach, averageChance, userPercentile, mean, median) + tier row.
+   - Each metric row shows: label, current value, compare value, diff (with +/− sign and color: green=better, red=worse, gray=same).
+   - Percent values show ٪ suffix; rank values use faFmt.
+   - Empty state with ⚖️ icon and instructions when no comparison has been run.
+   - "✕ پاک" button clears the input + content.
+   - Toast notifications for all actions.
+2. **Row expand** — `▼` button on every result row:
+   - Event delegation handles all rows (works with filter/sort re-renders).
+   - Toggles `#rowId-details` div between `display:none` and `display:block`.
+   - `aria-expanded` + `aria-label` updates.
+   - Chevron rotates 180deg when expanded.
+   - Expanded content includes:
+     - **Advice box** (💡 icon) — contextual advice based on bucket + chance level (e.g., "انتخاب بسیار امن — این رشته‌محل را در اولویت‌های بالای لیست خود قرار دهید").
+     - **Rank ratio bar** — centered bar showing user's position relative to cutoff (50% = at cutoff, >50% = better, <50% = worse), with color (emerald=better, rose=worse) and textual description.
+     - **Stats row** — 2-column grid showing "آخرین رتبه قبولی" (cutoff) and "نوع دانشگاه" (university type).
+   - Each row gets a unique `rowId` for the details div.
+
+## Verification (final)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Downloadable HTML: 133KB (was 120KB), all new features present.
+- Offline compare: clicking "⚖️ مقایسه رتبه‌ها" opens the compare area; filling "5000" and clicking "⚖️ مقایسه" renders a 7-row table with first row "انتخاب در دسترس: ۴۲ vs ۳۲ vs ۱۰".
+- Offline row expand: clicking ▼ button toggles `aria-expanded` from "false" to "true", rotates chevron 180deg, shows details with advice text.
+- ESLint passes with zero errors/warnings.
+- No runtime errors in /home/z/my-project/dev.log.
+
+## Unresolved issues or risks, and priority recommendations for the next phase
+- **PWA / offline support** for main page — could add a service worker + manifest.json to make the main page itself work offline (currently only the downloadable HTML is offline-capable).
+- **Real Sanjesh data** — current dataset uses estimated cutoffs; real past-year admission data should be ingested.
+- **Sort dropdown SSR quirk** — still mitigated with the `key={mounted}` remount trick.
+- **Tooltip on chance%** could be ported to the downloadable HTML (currently only in main app).
+- **Shimmer loading skeleton** could be ported to the downloadable HTML (currently only in main app).
+
+Stage Summary:
+- QA pass complete: no bugs found in current functionality.
+- Two new feature groups ported to downloadable HTML: Comparison view (side-by-side metrics table, fully offline), Row expand (advice + rank ratio bar + stats, with event delegation).
+- ESLint clean; dev server stable; no runtime errors.
+- Downloadable HTML now has feature parity for: rank estimation, filter/search/sort (including city), favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts, charts, collapsible stats card, quick-start examples, theme toggle, AND now comparison view + row expand.
