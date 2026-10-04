@@ -871,3 +871,60 @@ Stage Summary:
 - ESLint clean; dev server stable; no runtime errors.
 - Downloadable HTML now has near-complete feature parity: rank estimation, filter/search/sort (including city), favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts (with help dialog), charts, collapsible stats card, quick-start examples, theme toggle, comparison view, row expand, AND now expand all/collapse all + tooltip + shimmer loading.
 - The only features remaining unique to the main app are: count-up animation, mobile bottom-sheet drawer, shareable URL, and Open Graph meta tags (these require React state or server-side functionality).
+
+---
+Task ID: 12
+Agent: main (user-requested fix)
+Task: Fix swapped optimistic/pessimistic logic + ingest real Konkur data from PDF
+
+## Problem description (user feedback)
+User reported that the bucketing logic was backwards:
+- "خوش‌بینانه باید چیزی باشه که نمیاری" — Optimistic should be dream/reach choices (you WON'T get in)
+- "بدبینانه اونیه که قطعی میاری" — Pessimistic should be safe choices (you definitely WILL get in)
+- "تو برعکس زدی" — You did it backwards
+- User also uploaded a PDF (ریاضی.pdf) with real Konkur 1404 cutoff data to replace the estimated data.
+
+## Fixes applied
+1. **SWAPPED optimistic ↔ pessimistic logic** in `konkur-data.ts`:
+   - OLD (wrong): `rank <= cutoff * 0.85` → optimistic (safe) ; `rank > cutoff * 1.15` → pessimistic (reach)
+   - NEW (correct): `rank <= cutoff * 0.85` → **pessimistic** (safe/بدبینانه) ; `rank > cutoff * 1.15` → **optimistic** (dream/خوش‌بینانه)
+   - The `realistic` bucket is unchanged (rank near cutoff).
+   - `reachableCount` now = pessimistic + realistic (safe + realistic = what you can get into).
+
+2. **Ingested real Konkur data from PDF** (ریاضی.pdf, 48 pages, 1444 entries):
+   - Extracted tables using PyMuPDF's `find_tables()` API.
+   - Persian text was reversed at character level within the PDF table cells — reversed each word's characters and reversed word order.
+   - Generated TypeScript file `src/lib/riazi-real-data.ts` with 1444 `MajorRow` entries.
+   - Updated `DATASET` to use `RIAZI_REAL` for the `riazi` group (falls back to old data if empty).
+   - The offline HTML's JSON payload also includes the real data automatically (since it reads from `DATASET`).
+
+3. **Updated all advice/tips text** to reflect the corrected logic:
+   - خوش‌بینانه: "انتخاب‌های رویایی — رتبه شما از آخرین رتبه قبولی بدتر است. شانس پایین، اما امیدوارانه در لیست قرار می‌دهید."
+   - بدبینانه: "انتخاب‌های امن — رتبه شما بهتر از آخرین رتبه قبولی است. قطعاً قبول می‌شوید."
+   - Priority list labels: "خوش‌بینانه (رویایی)" and "بدبینانه (امن)".
+   - Row advice text in RowItem: contextual advice reflecting the new bucket meaning.
+
+4. **Updated offline HTML** (`download-html/route.ts`):
+   - Same swap logic applied to the vanilla JS `estimate()` function.
+   - `reachableCount` = pes.length + real.length.
+   - Strategy labels updated: safe → "خوش‌بینانه", reach → "بدبینانه".
+   - Tips text updated to match new logic.
+   - Advice text in `rowHTML()` updated.
+
+## Verification
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`:
+  - Tabs: خوش‌بینانه (۸۷), منطقی (۲۷), بدبینانه (۵۱۵) — total ۶۲۹ رشته‌محل.
+  - ۶۲۹ rows (was 60 with estimated data) — real data from PDF.
+  - No errors.
+- Downloadable HTML: 409KB (was 143KB — includes 1444 real data entries).
+  - Same results: 87/27/515.
+  - No errors.
+- ESLint passes.
+- No runtime errors in dev.log.
+
+## Impact
+- **629 unique major×university×quota entries** for the رياضی group (was 60 with estimated data).
+- The logic now correctly categorizes:
+  - خوش‌بینانه = dream/reach choices (rank worse than cutoff) — "I'm optimistic I'll get in"
+  - منطقی = realistic choices (rank near cutoff)
+  - بدبینانه = safe choices (rank better than cutoff) — "I'm pessimistic so I pick safe options"

@@ -593,9 +593,9 @@ export async function GET(req: NextRequest) {
       </div>
 
       <div class="tips">
-        <div class="tip"><h4>خوش‌بینانه چیست؟</h4><p>رشته‌محل‌هایی که رتبه شما به‌طور قابل توجهی بهتر از آخرین رتبه قبولی سال گذشته است. شانس قبولی بالا.</p></div>
+        <div class="tip"><h4>خوش‌بینانه چیست؟</h4><p>انتخاب‌های رویایی — رشته‌محل‌هایی که رتبه شما از آخرین رتبه قبولی بدتر است. شانس قبولی پایین، اما امیدوارانه در لیست قرار می‌دهید.</p></div>
         <div class="tip"><h4>منطقی چیست؟</h4><p>رشته‌محل‌هایی که رتبه شما نزدیک به آخرین رتبه قبولی است. شانس قبولی متوسط — برای چینش اولویت حتماً در نظر بگیرید.</p></div>
-        <div class="tip"><h4>بدبینانه چیست؟</h4><p>رشته‌محل‌هایی که رتبه شما از آخرین رتبه قبولی بدتر است. برای زنجیره امن (به‌عنوان گزینه پشتیبان) استفاده کنید.</p></div>
+        <div class="tip"><h4>بدبینانه چیست؟</h4><p>انتخاب‌های امن — رشته‌محل‌هایی که رتبه شما به‌طور قابل توجهی بهتر از آخرین رتبه قبولی است. قطعاً قبول می‌شوید. به‌عنوان گزینه پشتیبان در انتهای لیست استفاده کنید.</p></div>
       </div>
     </section>
 
@@ -690,15 +690,17 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
       if (cutoff === undefined || cutoff === null) continue;
       var chance = computeChance(rank, cutoff);
       var bucket;
-      if (rank <= cutoff * 0.85) bucket = 'optimistic';
+      // خوش‌بینانه = dream/reach (rank worse than cutoff), بدبینانه = safe (rank better than cutoff)
+      if (rank <= cutoff * 0.85) bucket = 'pessimistic'; // safe (بدبینانه)
       else if (rank <= cutoff * 1.15) bucket = 'realistic';
-      else bucket = 'pessimistic';
+      else bucket = 'optimistic'; // dream/reach (خوش‌بینانه)
       all.push(Object.assign({}, row, { cutoff: cutoff, chance: chance, bucket: bucket, rankDistance: cutoff - rank }));
     }
     var opt = all.filter(function (r) { return r.bucket === 'optimistic'; }).sort(function (a, b) { return b.chance - a.chance; });
     var real = all.filter(function (r) { return r.bucket === 'realistic'; }).sort(function (a, b) { return b.chance - a.chance; });
     var pes = all.filter(function (r) { return r.bucket === 'pessimistic'; }).sort(function (a, b) { return b.chance - a.chance; });
-    var reachable = opt.length + real.length;
+    // reachable = بدبینانه (safe) + منطقی (realistic)
+    var reachable = pes.length + real.length;
     var cutoffs = all.map(function (r) { return r.cutoff; }).sort(function (a, b) { return a - b; });
     var median = cutoffs.length ? cutoffs[Math.floor(cutoffs.length / 2)] : null;
     var best = all.length ? all.reduce(function (a, b) { return b.chance > a.chance ? b : a; }) : null;
@@ -714,11 +716,13 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
     // Advice text based on bucket and chance
     var advice;
     if (r.bucket === 'optimistic') {
-      advice = r.chance >= 90 ? 'انتخاب بسیار امن — این رشته‌محل را در اولویت‌های بالای لیست خود قرار دهید.' : 'انتخاب امن — شانس قبولی بالاست.';
+      // خوش‌بینانه = dream/reach
+      advice = r.chance >= 30 ? 'انتخاب خوش‌بینانه — شانس قبولی پایین اما امیدوارانه در لیست قرار دهید.' : 'انتخاب رویایی — شانس قبولی بسیار پایین است. به‌عنوان انتخاب آخر لیست استفاده کنید.';
     } else if (r.bucket === 'realistic') {
       advice = 'انتخاب منطقی — رتبه شما نزدیک به آخرین رتبه قبولی است. حتماً در لیست اولویت‌ها قرار دهید.';
     } else {
-      advice = 'انتخاب شانسی — رتبه شما از آخرین رتبه قبولی بدتر است. به‌عنوان گزینه پشتیبان در انتهای لیست استفاده کنید.';
+      // بدبینانه = safe
+      advice = r.chance >= 90 ? 'انتخاب بسیار امن (بدبینانه) — قطعاً قبول می‌شوید. در انتهای لیست برای اطمینان قرار دهید.' : 'انتخاب امن (بدبینانه) — شانس قبولی بالاست. به‌عنوان گزینه پشتیبان استفاده کنید.';
     }
     // Rank ratio
     var rankRatio = r.cutoff > 0 ? (r.rankDistance / r.cutoff) * 100 : 0;
@@ -1559,7 +1563,7 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
   function priorityRowHTML(p) {
     var chanceColor = p.chance >= 70 ? '#10b981' : (p.chance >= 40 ? '#f59e0b' : '#ef4444');
     var stratColor = p.strategy === 'safe' ? '#10b981' : (p.strategy === 'logical' ? '#f59e0b' : '#ef4444');
-    var stratLabel = p.strategy === 'safe' ? 'امن' : (p.strategy === 'logical' ? 'منطقی' : 'شانس');
+    var stratLabel = p.strategy === 'safe' ? 'خوش‌بینانه' : (p.strategy === 'logical' ? 'منطقی' : 'بدبینانه');
     return ''
       + '<div class="row" style="display:flex; gap:12px; align-items:flex-start;">'
       + '  <div style="shrink:0; width:36px; height:36px; border-radius:8px; border:1px solid ' + stratColor + '40; background:' + stratColor + '1a; color:' + stratColor + '; display:flex; align-items:center; justify-content:center; font-weight:700; font-family:monospace;">' + fa(p.priority) + '</div>'
