@@ -735,3 +735,74 @@ Stage Summary:
 - Two new feature groups ported to downloadable HTML: Comparison view (side-by-side metrics table, fully offline), Row expand (advice + rank ratio bar + stats, with event delegation).
 - ESLint clean; dev server stable; no runtime errors.
 - Downloadable HTML now has feature parity for: rank estimation, filter/search/sort (including city), favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts, charts, collapsible stats card, quick-start examples, theme toggle, AND now comparison view + row expand.
+
+---
+Task ID: 10
+Agent: cron-review (webDevReview)
+Task: QA pass + new features (expand all/collapse all, count-up animation, offline help dialog)
+
+## Current project status description/assessment
+The project was feature-complete after Task 9 with: rank estimator, filter/search/sort (including city), favorites, history, chart view, print/PDF, keyboard shortcuts (? help dialog), deep-link sharing, comparison view, row expand with advice + rank ratio bar + stats, tooltip on chance%, Open Graph meta tags, shimmer loading skeleton, downloadable offline HTML with CSV/JSON/priority-list/favorites/charts/city-filter/collapsible-stats-card/quick-start/theme-toggle/comparison-view/row-expand features. ESLint clean, no runtime errors. The recommended next-phase work items from Task 9 were:
+- PWA / offline support for main page.
+- Real Sanjesh data.
+- Sort dropdown SSR quirk.
+- Tooltip on chance% could be ported to downloadable HTML.
+- Shimmer loading skeleton could be ported to downloadable HTML.
+
+## QA findings (via agent-browser + curl)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Downloadable HTML works offline (38 results, all features present).
+- All previously-added features verified working.
+- ESLint passes; no runtime errors in dev.log.
+
+## New features added (Main App)
+1. **Expand all / collapse all button** in `BucketList`:
+   - New header row at the top of each result list card showing count ("۳۸ رشته‌محل") + a toggle button.
+   - Button text: "باز کردن همه" (expand all) ↔ "جمع کردن همه" (collapse all).
+   - Chevron icon (ChevronDown/ChevronUp) accompanies the text.
+   - Uses `expandAll` state (boolean | null): null = per-row control, true = all expanded, false = all collapsed.
+   - `RowItem` accepts `expandAll` prop: when non-null, overrides the individual `expanded` state.
+   - Individual row toggle still works: clicking a row's chevron sets `userExpanded` to the opposite of the current `expandAll` value, giving the user per-row control after a bulk action.
+   - `aria-label` updates: "باز کردن همه" ↔ "جمع کردن همه".
+2. **Count-up animation** for summary stats (`CountUp` component):
+   - Animates from 0 to target value using `requestAnimationFrame`.
+   - Ease-out cubic easing function for smooth deceleration.
+   - Duration: 800ms.
+   - Uses `faFmt()` for Persian digit formatting with thousand separators.
+   - Applied to the 3 summary stats: reachableCount, medianRank, bestChance%.
+   - `Stat` component's `value` prop changed from `string` to `React.ReactNode` to accept the CountUp component.
+   - `tabular-nums` class added to the stat value for stable layout during animation.
+
+## New features ported to downloadable HTML
+1. **Keyboard shortcut help dialog** — "⌨️ میانبرها" button in the header + `#helpDialog` modal:
+   - Fixed-position overlay with backdrop blur and semi-transparent background.
+   - Card-style dialog with title "⌨️ میانبرهای صفحه‌کلید" and 4 shortcut rows: `/` (focus search), `?` (toggle this help), `Esc` (close), `Enter` (submit form).
+   - Each shortcut shown as `<kbd>` element.
+   - Close button (✕) + click-outside-to-close + Esc key.
+   - Keyboard handler updated to support `?` (toggle help) and `Esc` (close help or return to search).
+   - Function hoisting ensures `toggleHelpDialog` is available to the keyboard handler.
+
+## Verification (final)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Expand all: clicking "باز کردن همه" expands all 38 rows (aria-label changes to "بستن جزئیات"); button text changes to "جمع کردن همه".
+- Collapse all: clicking "جمع کردن همه" collapses all rows (0 expanded); button text back to "باز کردن همه".
+- Count-up: stat values correctly show "۴۲" (reachable), "۴,۸۰۰" (median), "۹۹٪" (best chance) after animation completes.
+- Downloadable HTML: 138KB (was 133KB), all new features present.
+- Offline help dialog: clicking "راهنمای میانبرها" opens dialog with title "⌨️ میانبرهای صفحه‌کلید" and 4 kbd elements; pressing `?` also opens it; Esc closes it; click-outside closes it.
+- ESLint passes with zero errors/warnings.
+- No runtime errors in /home/z/my-project/dev.log.
+
+## Unresolved issues or risks, and priority recommendations for the next phase
+- **PWA / offline support** for main page — could add a service worker + manifest.json to make the main page itself work offline.
+- **Real Sanjesh data** — current dataset uses estimated cutoffs; real past-year admission data should be ingested.
+- **Sort dropdown SSR quirk** — still mitigated with the `key={mounted}` remount trick.
+- **Tooltip on chance%** could be ported to the downloadable HTML (currently only in main app).
+- **Shimmer loading skeleton** could be ported to the downloadable HTML (currently only in main app).
+- **Expand all / collapse all** could be ported to the downloadable HTML too.
+
+Stage Summary:
+- QA pass complete: no bugs found in current functionality.
+- Two new feature groups added to the main app: Expand all/collapse all button (BucketList header with count + toggle), Count-up animation (requestAnimationFrame with ease-out cubic for summary stats).
+- One new feature ported to downloadable HTML: Keyboard shortcut help dialog (⌨️ button + modal with 4 shortcuts + ?/Esc key support).
+- ESLint clean; dev server stable; no runtime errors.
+- Downloadable HTML now has feature parity for: rank estimation, filter/search/sort (including city), favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts (with help dialog), charts, collapsible stats card, quick-start examples, theme toggle, comparison view, row expand, AND now keyboard shortcut help dialog.

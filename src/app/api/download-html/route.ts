@@ -361,8 +361,41 @@ export async function GET(req: NextRequest) {
         <span id="themeIcon">🌙</span>
         <span style="margin-right:6px;" id="themeLabel">تاریک</span>
       </button>
+      <button id="helpBtn" type="button" class="btn secondary" style="padding: 8px 16px; font-size: 13px;" aria-label="راهنمای میانبرها" title="راهنمای میانبرها (?)">
+        <span>⌨️</span>
+        <span style="margin-right:6px;">میانبرها</span>
+      </button>
     </div>
   </header>
+
+  <!-- Keyboard shortcut help dialog -->
+  <div id="helpDialog" style="display:none; position:fixed; inset:0; z-index:50; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:16px;">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:0 20px 40px -10px rgba(0,0,0,0.5); max-width:400px; width:100%; padding:20px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h3 style="margin:0; font-size:16px; display:flex; align-items:center; gap:6px;">⌨️ میانبرهای صفحه‌کلید</h3>
+        <button id="helpCloseBtn" type="button" style="background:none; border:0; cursor:pointer; color:var(--muted); padding:4px;" aria-label="بستن">✕</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border);">
+          <span style="font-size:13px; color:var(--text-soft);">تمرکز روی جستجو</span>
+          <kbd style="font-family:monospace; font-size:11px; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:4px; padding:2px 8px;">/</kbd>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border);">
+          <span style="font-size:13px; color:var(--text-soft);">نمایش/پنهان این راهنما</span>
+          <kbd style="font-family:monospace; font-size:11px; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:4px; padding:2px 8px;">?</kbd>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border);">
+          <span style="font-size:13px; color:var(--text-soft);">بستن پنجره</span>
+          <kbd style="font-family:monospace; font-size:11px; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:4px; padding:2px 8px;">Esc</kbd>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:6px 0;">
+          <span style="font-size:13px; color:var(--text-soft);">ارسال فرم</span>
+          <kbd style="font-family:monospace; font-size:11px; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:4px; padding:2px 8px;">Enter</kbd>
+        </div>
+      </div>
+      <p style="margin:16px 0 0; font-size:11px; color:var(--muted); line-height:1.6;">میانبرها فقط زمانی که در حال تایپ در یک فیلد متنی نیستید کار می‌کنند (به جز Esc).</p>
+    </div>
+  </div>
 
   <main>
     <section class="card" style="margin-bottom: 18px;">
@@ -1083,16 +1116,30 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
     reRender();
   });
 
-  // Keyboard shortcut: "/" focuses search (when not typing in another input)
+  // Keyboard shortcut: "/" focuses search, "?" toggles help, "Esc" closes help
   document.addEventListener('keydown', function (e) {
     var target = e.target;
     var isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+    var helpDlg = document.getElementById('helpDialog');
+    var helpVisible = helpDlg && helpDlg.style.display !== 'none';
+    if (e.key === 'Escape') {
+      if (helpVisible) { toggleHelpDialog(false); return; }
+      if (isTyping && document.getElementById('searchInput')) {
+        var inp = document.getElementById('searchInput');
+        inp.focus();
+        inp.select();
+      }
+      return;
+    }
     if (isTyping) return;
     if (e.key === '/' && document.getElementById('resultArea').style.display !== 'none') {
       e.preventDefault();
       var inp = document.getElementById('searchInput');
       inp.focus();
       inp.select();
+    } else if (e.key === '?') {
+      e.preventDefault();
+      toggleHelpDialog();
     }
   });
 
@@ -1156,6 +1203,22 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
   }
   loadTheme();
   document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+
+  // ───── Keyboard shortcut help dialog ─────
+  function toggleHelpDialog(force) {
+    var dlg = document.getElementById('helpDialog');
+    var shouldShow = force !== undefined ? force : dlg.style.display === 'none';
+    dlg.style.display = shouldShow ? 'flex' : 'none';
+  }
+  document.getElementById('helpBtn').addEventListener('click', function () {
+    toggleHelpDialog(true);
+  });
+  document.getElementById('helpCloseBtn').addEventListener('click', function () {
+    toggleHelpDialog(false);
+  });
+  document.getElementById('helpDialog').addEventListener('click', function (e) {
+    if (e.target === this) toggleHelpDialog(false);
+  });
 
   // Setup stats card collapse toggle
   setupStatsCardToggle();

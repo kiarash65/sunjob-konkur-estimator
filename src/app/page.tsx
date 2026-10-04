@@ -1425,21 +1425,21 @@ function ResultView({
           <div className="grid grid-cols-3 gap-3">
             <Stat
               icon={<ListChecks className="w-4 h-4" />}
-              value={faFmt(result.summary.reachableCount)}
+              value={result.summary.reachableCount > 0 ? <CountUp target={result.summary.reachableCount} /> : '—'}
               label="انتخاب در دسترس"
               color="text-emerald-500"
               delay={0}
             />
             <Stat
               icon={<TrendingUp className="w-4 h-4" />}
-              value={result.summary.medianRank ? faFmt(result.summary.medianRank) : '—'}
+              value={result.summary.medianRank ? <CountUp target={result.summary.medianRank} /> : '—'}
               label="میانه رتبه قبولی"
               color="text-amber-500"
               delay={0.05}
             />
             <Stat
               icon={<Award className="w-4 h-4" />}
-              value={best ? `${fa(best.chance)}٪` : '—'}
+              value={best ? <><CountUp target={best.chance} />٪</> : '—'}
               label="بیشترین شانس"
               color="text-violet-500"
               delay={0.1}
@@ -2464,6 +2464,39 @@ function PriorityRow({
   )
 }
 
+function CountUp({
+  target,
+  duration = 800,
+  className,
+}: {
+  target: number
+  duration?: number
+  className?: string
+}) {
+  const [display, setDisplay] = useState(0)
+  const rafRef = useRef<number | null>(null)
+  useEffect(() => {
+    const start = performance.now()
+    const startVal = 0
+    function tick(now: number) {
+      const elapsed = now - start
+      const progress = Math.min(elapsed / duration, 1)
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3)
+      const current = Math.round(startVal + (target - startVal) * eased)
+      setDisplay(current)
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick)
+      }
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [target, duration])
+  return <span className={className}>{faFmt(display)}</span>
+}
+
 function Stat({
   icon,
   value,
@@ -2472,7 +2505,7 @@ function Stat({
   delay = 0,
 }: {
   icon: React.ReactNode
-  value: string
+  value: React.ReactNode
   label: string
   color: string
   delay?: number
@@ -2487,7 +2520,7 @@ function Stat({
       <div className="flex items-center justify-center gap-1.5 mb-1">
         <span className={color}>{icon}</span>
       </div>
-      <div className={cn('text-lg font-bold leading-tight', color)}>{value}</div>
+      <div className={cn('text-lg font-bold leading-tight tabular-nums', color)}>{value}</div>
       <div className="text-[11px] text-muted-foreground mt-0.5">{label}</div>
     </motion.div>
   )
@@ -2664,6 +2697,7 @@ function BucketList({
   isFav: (r: EstimatedRow) => boolean
   showBucketBadge?: boolean
 }) {
+  const [expandAll, setExpandAll] = useState<boolean | null>(null)
   const toneClasses =
     tone === 'emerald'
       ? 'from-emerald-500/15'
@@ -2681,6 +2715,29 @@ function BucketList({
   }
   return (
     <Card className="border-border/60">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-foreground/[0.02]">
+        <span className="text-[11px] text-muted-foreground">
+          {fa(rows.length)} رشته‌محل
+        </span>
+        <button
+          type="button"
+          onClick={() => setExpandAll((v) => (v === true ? false : true))}
+          className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-foreground/5 transition-colors"
+          aria-label={expandAll === true ? 'جمع کردن همه' : 'باز کردن همه'}
+        >
+          {expandAll === true ? (
+            <>
+              <ChevronUp className="w-3 h-3" />
+              جمع کردن همه
+            </>
+          ) : (
+            <>
+              <ChevronDown className="w-3 h-3" />
+              باز کردن همه
+            </>
+          )}
+        </button>
+      </div>
       <CardContent className="p-0 max-h-[640px] overflow-y-auto custom-scroll">
         {rows.map((r, i) => (
           <RowItem
@@ -2690,6 +2747,7 @@ function BucketList({
             onToggleFav={onToggleFav}
             isFav={isFav}
             showBucketBadge={showBucketBadge}
+            expandAll={expandAll}
           />
         ))}
       </CardContent>
@@ -2703,14 +2761,29 @@ function RowItem({
   onToggleFav,
   isFav,
   showBucketBadge,
+  expandAll,
 }: {
   row: EstimatedRow
   gradientClass: string
   onToggleFav: (r: EstimatedRow) => void
   isFav: (r: EstimatedRow) => boolean
   showBucketBadge?: boolean
+  expandAll?: boolean | null
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [userExpanded, setUserExpanded] = useState(false)
+  // expandAll prop overrides user's individual toggle when it's non-null
+  const expanded = expandAll !== null && expandAll !== undefined ? expandAll : userExpanded
+  const setExpanded = (v: boolean | ((prev: boolean) => boolean)) => {
+    // When expandAll is active, individual toggle temporarily overrides by
+    // resetting expandAll to null (so the user regains per-row control)
+    if (expandAll !== null && expandAll !== undefined) {
+      // We can't setExpandAll here (it lives in BucketList), so we just
+      // set the user state to the opposite of the current expandAll
+      setUserExpanded(expandAll ? false : true)
+    } else {
+      setUserExpanded(v)
+    }
+  }
   const chance = row.chance
   const chanceColor =
     chance >= 70 ? 'text-emerald-500' : chance >= 40 ? 'text-amber-500' : 'text-rose-500'
