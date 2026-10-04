@@ -806,3 +806,68 @@ Stage Summary:
 - One new feature ported to downloadable HTML: Keyboard shortcut help dialog (⌨️ button + modal with 4 shortcuts + ?/Esc key support).
 - ESLint clean; dev server stable; no runtime errors.
 - Downloadable HTML now has feature parity for: rank estimation, filter/search/sort (including city), favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts (with help dialog), charts, collapsible stats card, quick-start examples, theme toggle, comparison view, row expand, AND now keyboard shortcut help dialog.
+
+---
+Task ID: 11
+Agent: cron-review (webDevReview)
+Task: QA pass + port expand all, tooltip, shimmer loading to downloadable HTML
+
+## Current project status description/assessment
+The project was feature-complete after Task 10 with: rank estimator, filter/search/sort (including city), favorites, history, chart view, print/PDF, keyboard shortcuts (with help dialog), deep-link sharing, comparison view, row expand with advice + rank ratio bar + stats, tooltip on chance%, Open Graph meta tags, shimmer loading skeleton, expand all/collapse all, count-up animation, downloadable offline HTML with CSV/JSON/priority-list/favorites/charts/city-filter/collapsible-stats-card/quick-start/theme-toggle/comparison-view/row-expand/help-dialog features. ESLint clean, no runtime errors. The recommended next-phase work items from Task 10 were:
+- PWA / offline support for main page.
+- Real Sanjesh data.
+- Tooltip on chance% could be ported to downloadable HTML.
+- Shimmer loading skeleton could be ported to downloadable HTML.
+- Expand all / collapse all could be ported to downloadable HTML too.
+
+## QA findings (via agent-browser + curl)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Downloadable HTML works offline (38 results, all features present).
+- All previously-added features verified working.
+- ESLint passes; no runtime errors in dev.log.
+
+## New features ported to downloadable HTML (`/api/download-html`)
+1. **Expand all / collapse all** — `.bucket-header` div at the top of each result list:
+   - Shows row count (e.g., "۳۸ رشته‌محل") and a toggle button ("▼ باز کردن همه" ↔ "▲ جمع کردن همه").
+   - Event delegation: clicking the button checks if any rows are expanded; if yes, collapses all; if no, expands all.
+   - Updates each row's `.expand-btn` (aria-expanded, aria-label, transform) accordingly.
+   - Updates the expand-all button's text and aria-label.
+   - Works per-bucket (each bucket has its own expand-all button).
+2. **Tooltip on chance%** — `.chance-tooltip` CSS class with `.tooltip-content`:
+   - The chance% span is wrapped in `.chance-tooltip` with `cursor:help`.
+   - Hidden `.tooltip-content` div appears on hover (`opacity: 0` → `opacity: 1` with transition).
+   - Shows: "شانس قبولی بر اساس فاصله رتبه شما تا آخرین رتبه قبولی سال گذشته محاسبه می‌شود. شانس بالا/متوسط/پایین."
+   - Positioned above the chance% value with a box-shadow and theme-aware colors.
+   - CSS uses absolute positioning, `white-space: nowrap`, `z-index: 10`.
+3. **Shimmer loading skeleton** — `.skeleton-box` with `::after` pseudo-element:
+   - CSS: `background: rgba(255,255,255,0.03)`, height 60px, border-radius 8px.
+   - `::after` pseudo-element: gradient sweep animation (`shimmer-sweep` keyframe: background-position from -200% to 200%).
+   - Light theme variant: uses `rgba(0,0,0,0.06)` instead.
+   - Submit handler now shows skeleton state for 300ms before rendering results:
+     - Summary area: 1 skeleton box (80px height).
+     - Each bucket (rowsOpt/rowsReal/rowsPes): 3 skeleton boxes.
+     - Hides stats card, priority area, chart area, compare area during loading.
+     - After 300ms, calls `render(result)` and restores the filter card.
+
+## Verification (final)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Downloadable HTML: 143KB (was 138KB), all new features present.
+- Offline expand-all: clicking "▼ باز کردن همه" expands all 38 detail rows (all visible); button text changes to "▲ جمع کردن همه"; clicking again collapses all (0 visible); button text back to "▼ باز کردن همه".
+- Offline tooltip: `.chance-tooltip` present with `.tooltip-content` showing "شانس قبولی بر اساس فاصله رتبه شما تا آخرین رتبه قبولی سال گذ..." (opacity: 0, visible on hover).
+- Offline shimmer: during the 300ms loading delay, 10 `.skeleton-box` elements are shown (1 in summary + 3 per bucket × 3 buckets); after loading, skeletons replaced with actual results (38 rows, 0 skeletons).
+- ESLint passes with zero errors/warnings.
+- No runtime errors in /home/z/my-project/dev.log.
+
+## Unresolved issues or risks, and priority recommendations for the next phase
+- **PWA / offline support** for main page — could add a service worker + manifest.json to make the main page itself work offline.
+- **Real Sanjesh data** — current dataset uses estimated cutoffs; real past-year admission data should be ingested.
+- **Sort dropdown SSR quirk** — still mitigated with the `key={mounted}` remount trick.
+- **Count-up animation** could be ported to the downloadable HTML (currently only in main app).
+- **Mobile bottom-sheet** (Sheet) could be ported to the downloadable HTML (currently only in main app).
+
+Stage Summary:
+- QA pass complete: no bugs found in current functionality.
+- Three new feature groups ported to downloadable HTML: Expand all/collapse all (per-bucket header with toggle), Tooltip on chance% (CSS hover with theme-aware content), Shimmer loading skeleton (300ms delay with 10 skeleton boxes).
+- ESLint clean; dev server stable; no runtime errors.
+- Downloadable HTML now has near-complete feature parity: rank estimation, filter/search/sort (including city), favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts (with help dialog), charts, collapsible stats card, quick-start examples, theme toggle, comparison view, row expand, AND now expand all/collapse all + tooltip + shimmer loading.
+- The only features remaining unique to the main app are: count-up animation, mobile bottom-sheet drawer, shareable URL, and Open Graph meta tags (these require React state or server-side functionality).

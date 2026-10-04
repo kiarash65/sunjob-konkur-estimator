@@ -343,6 +343,51 @@ export async function GET(req: NextRequest) {
     .row { break-inside: avoid; page-break-inside: avoid; }
     .badge { color: #333 !important; background: #f5f5f5 !important; border-color: #ccc !important; }
   }
+
+  /* Bucket list header (expand all / collapse all) */
+  .bucket-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+  .bucket-header-count { font-size: 11px; color: var(--muted); }
+  .expand-all-btn {
+    background: none; border: 0; cursor: pointer; padding: 4px 8px;
+    font-size: 11px; color: var(--muted); border-radius: 4px;
+    display: inline-flex; align-items: center; gap: 4px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .expand-all-btn:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+
+  /* Tooltip on chance% */
+  .chance-tooltip {
+    position: relative; cursor: help;
+  }
+  .chance-tooltip .tooltip-content {
+    position: absolute; bottom: 100%; right: 50%; transform: translateX(50%);
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 10px; border-radius: 6px; font-size: 11px; line-height: 1.5;
+    white-space: nowrap; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s; z-index: 10; margin-bottom: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .chance-tooltip:hover .tooltip-content { opacity: 1; }
+
+  /* Shimmer loading skeleton */
+  .skeleton-box {
+    height: 60px; border-radius: 8px; margin: 8px 0;
+    background: rgba(255,255,255,0.03); position: relative; overflow: hidden;
+  }
+  .skeleton-box::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    background-size: 200% 100%; animation: shimmer-sweep 1.5s infinite;
+  }
+  @keyframes shimmer-sweep { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  html[data-theme="light"] .skeleton-box::after {
+    background: linear-gradient(90deg, transparent, rgba(0,0,0,0.06), transparent);
+    background-size: 200% 100%;
+  }
 </style>
 </head>
 <body>
@@ -694,7 +739,7 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
       + '    <span class="badge">📍 ' + (r.city || '—') + '</span>'
       + '  </div>'
       + '  <div class="uni">آخرین رتبه قبولی سال گذشته: ' + faFmt(r.cutoff) + '</div>'
-      + '  <div class="chance-row"><span>شانس قبولی شما</span><span style="color:' + chanceColor + '; font-weight:700">' + fa(r.chance) + '٪</span></div>'
+      + '  <div class="chance-row"><span>شانس قبولی شما</span><span class="chance-tooltip" style="color:' + chanceColor + '; font-weight:700; cursor:help;">' + fa(r.chance) + '٪<span class="tooltip-content">شانس قبولی بر اساس فاصله رتبه شما تا آخرین رتبه قبولی سال گذشته محاسبه می‌شود. ' + (r.chance >= 70 ? 'شانس بالا.' : r.chance >= 40 ? 'شانس متوسط.' : 'شانس پایین.') + '</span></span></div>'
       + '  <div class="chance-bar"><div style="width:' + r.chance + '%; background:linear-gradient(90deg,#f59e0b,' + chanceColor + ')"></div></div>'
       // Expandable details (hidden by default)
       + '  <div class="row-details" id="' + rowId + '-details" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">'
@@ -1050,7 +1095,15 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
       var cEl = document.getElementById(countId);
       cEl.textContent = list.length ? ('(' + fa(list.length) + ' رشته‌محل)') : '';
       if (!list.length) { el.innerHTML = '<div class="empty">موردی در این دسته یافت نشد.</div>'; return; }
-      el.innerHTML = list.map(rowHTML).join('');
+      var html = ''
+        + '<div class="bucket-header">'
+        + '  <span class="bucket-header-count">' + fa(list.length) + ' رشته‌محل</span>'
+        + '  <button type="button" class="expand-all-btn" data-bucket="' + id + '" aria-label="باز کردن همه">'
+        + '    <span>▼</span> باز کردن همه'
+        + '  </button>'
+        + '</div>'
+        + list.map(rowHTML).join('');
+      el.innerHTML = html;
     }
     fill('rowsOpt', opt, 'cOpt');
     fill('rowsReal', real, 'cReal');
@@ -1093,9 +1146,31 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
     if (!quota) return showError('سهمیه را انتخاب کنید.');
     if (!rank || rank <= 0) return showError('رتبه معتبر وارد کنید.');
     showError('');
-    var result = estimate(group, quota, rank);
-    render(result);
-    document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Show loading skeleton briefly (simulates async for visual feedback)
+    var resultArea = document.getElementById('resultArea');
+    resultArea.style.display = 'block';
+    var summaryBox = document.getElementById('summaryBox');
+    summaryBox.innerHTML = ''
+      + '<div class="skeleton-box" style="height:80px;"></div>';
+    var filterCard = resultArea.querySelector('.card');
+    if (filterCard) filterCard.style.display = 'none';
+    // Show skeleton rows in buckets
+    ['rowsOpt', 'rowsReal', 'rowsPes'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = '<div class="skeleton-box"></div><div class="skeleton-box"></div><div class="skeleton-box"></div>';
+    });
+    // Hide stats card, priority, chart, compare areas during loading
+    ['statsCard', 'priorityArea', 'chartArea', 'compareArea'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    setTimeout(function () {
+      var result = estimate(group, quota, rank);
+      render(result);
+      // Restore filter card
+      if (filterCard) filterCard.style.display = '';
+      document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
   });
 
   // Filter / search / sort listeners
@@ -1339,6 +1414,45 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
       btnEl.setAttribute('aria-label', 'بستن جزئیات');
       btnEl.style.transform = 'rotate(180deg)';
     }
+  });
+
+  // Event delegation for expand-all buttons (bucket header)
+  document.addEventListener('click', function (e) {
+    var btnEl = e.target.closest && e.target.closest('.expand-all-btn');
+    if (!btnEl) return;
+    var bucketId = btnEl.getAttribute('data-bucket');
+    if (!bucketId) return;
+    var container = document.getElementById(bucketId);
+    if (!container) return;
+    var allExpandBtns = container.querySelectorAll('.expand-btn');
+    var allDetails = container.querySelectorAll('.row-details');
+    // Check if any are expanded — if all collapsed, expand all; if any expanded, collapse all
+    var anyExpanded = false;
+    for (var i = 0; i < allDetails.length; i++) {
+      if (allDetails[i].style.display !== 'none') { anyExpanded = true; break; }
+    }
+    for (var j = 0; j < allExpandBtns.length; j++) {
+      var btn = allExpandBtns[j];
+      var details = allDetails[j];
+      if (anyExpanded) {
+        // Collapse all
+        details.style.display = 'none';
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'نمایش جزئیات');
+        btn.style.transform = 'rotate(0deg)';
+      } else {
+        // Expand all
+        details.style.display = 'block';
+        btn.setAttribute('aria-expanded', 'true');
+        btn.setAttribute('aria-label', 'بستن جزئیات');
+        btn.style.transform = 'rotate(180deg)';
+      }
+    }
+    // Update the expand-all button text
+    btnEl.innerHTML = anyExpanded
+      ? '<span>▼</span> باز کردن همه'
+      : '<span>▲</span> جمع کردن همه';
+    btnEl.setAttribute('aria-label', anyExpanded ? 'باز کردن همه' : 'جمع کردن همه');
   });
 
   // ───── Export CSV / JSON ─────
