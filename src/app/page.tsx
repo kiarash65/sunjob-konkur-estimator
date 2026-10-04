@@ -2277,9 +2277,9 @@ function PriorityListView({
 }) {
   const strategyMeta = {
     safe: {
-      label: 'امن (خوش‌بینانه)',
+      label: 'خوش‌بینانه (رویایی)',
       tone: 'emerald',
-      desc: '۸ رشته‌محل با بالاترین شانس قبولی — برای اطمینان از پذیرش',
+      desc: '۸ انتخاب رویایی با شانس پایین — امیدوارانه در ابتدای لیست',
       icon: <CheckCircle2 className="w-4 h-4" />,
     },
     logical: {
@@ -2289,9 +2289,9 @@ function PriorityListView({
       icon: <Scale className="w-4 h-4" />,
     },
     reach: {
-      label: 'شانس (بدبینانه)',
+      label: 'بدبینانه (امن)',
       tone: 'rose',
-      desc: '۸ رشته‌محل با رتبه پایین‌تر — برای زنجیره امن در انتهای لیست',
+      desc: '۸ انتخاب امن با شانس بالا — قطعاً قبول می‌شوید، در انتهای لیست',
       icon: <AlertTriangle className="w-4 h-4" />,
     },
   } as const
@@ -2810,13 +2810,16 @@ function RowItem({
   // Generate advice text based on chance and bucket
   const adviceText = useMemo(() => {
     if (row.bucket === 'optimistic') {
-      if (chance >= 90) return 'انتخاب بسیار امن — این رشته‌محل را در اولویت‌های بالای لیست خود قرار دهید.'
-      return 'انتخاب امن — شانس قبولی بالاست. در دسته خوش‌بینانه جای می‌گیرد.'
+      // خوش‌بینانه = dream/reach choices (rank worse than cutoff)
+      if (chance >= 30) return 'انتخاب خوش‌بینانه — شانس قبولی پایین اما امیدوارانه در لیست قرار دهید.'
+      return 'انتخاب رویایی — شانس قبولی بسیار پایین است. به‌عنوان انتخاب آخر لیست استفاده کنید.'
     }
     if (row.bucket === 'realistic') {
       return 'انتخاب منطقی — رتبه شما نزدیک به آخرین رتبه قبولی است. حتماً در لیست اولویت‌ها قرار دهید.'
     }
-    return 'انتخاب شانسی — رتبه شما از آخرین رتبه قبولی بدتر است. به‌عنوان گزینه پشتیبان در انتهای لیست استفاده کنید.'
+    // بدبینانه = safe choices (rank better than cutoff)
+    if (chance >= 90) return 'انتخاب بسیار امن (بدبینانه) — قطعاً قبول می‌شوید. در انتهای لیست برای اطمینان قرار دهید.'
+    return 'انتخاب امن (بدبینانه) — شانس قبولی بالاست. به‌عنوان گزینه پشتیبان استفاده کنید.'
   }, [row.bucket, chance])
 
   // Compute rank ratio relative to cutoff

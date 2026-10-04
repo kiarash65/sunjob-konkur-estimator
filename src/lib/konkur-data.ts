@@ -438,8 +438,11 @@ const ZABAN: MajorRow[] = [
     cutoffs: { region1: 28000, region2: 36800, region3: 47700, eythar5: 51800, eythar25: 93500 } },
 ];
 
+// Real Konkur data from PDF (ریاضی group, 1404) — 1444 entries
+import { RIAZI_REAL } from './riazi-real-data';
+
 export const DATASET: Record<GroupKey, MajorRow[]> = {
-  riazi: RIAZI,
+  riazi: RIAZI_REAL.length > 0 ? RIAZI_REAL : RIAZI,
   tajrobi: TAJROBI,
   ensani: ENSANI,
   honar: HONAR,
@@ -505,24 +508,29 @@ export function estimate(group: GroupKey, quota: QuotaKey, rank: number): Estima
     const chance = computeChance(rank, cutoff);
     const rankDistance = cutoff - rank; // positive: user better than cutoff
     let bucket: EstimatedRow["bucket"];
-    if (rank <= cutoff * 0.85) bucket = "optimistic";
+    // خوش‌بینانه = انتخاب‌های رویایی (رتبه شما بدتر از حد قبولی) — شانس پایین
+    // بدبینانه = انتخاب‌های امن (رتبه شما بهتر از حد قبولی) — شانس بالا
+    // منطقی = نزدیک به حد قبولی — شانس متوسط
+    if (rank <= cutoff * 0.85) bucket = "pessimistic"; // rank much better than cutoff = safe (بدبینانه)
     else if (rank <= cutoff * 1.15) bucket = "realistic";
-    else bucket = "pessimistic";
+    else bucket = "optimistic"; // rank worse than cutoff = dream/reach (خوش‌بینانه)
     bucketed.push({ ...row, cutoff, chance, bucket, rankDistance });
   }
 
-  // Sort optimistic by best chance, realistic by closeness to cutoff, pessimistic by best chance
+  // خوش‌بینانه: sort by best chance (closest to cutoff first = best among reach choices)
   const optimistic = bucketed
     .filter((r) => r.bucket === "optimistic")
     .sort((a, b) => b.chance - a.chance);
   const realistic = bucketed
     .filter((r) => r.bucket === "realistic")
     .sort((a, b) => b.chance - a.chance);
+  // بدبینانه: sort by best chance (safest first)
   const pessimistic = bucketed
     .filter((r) => r.bucket === "pessimistic")
     .sort((a, b) => b.chance - a.chance);
 
-  const reachable = optimistic.length + realistic.length;
+  // reachable = بدبینانه + منطقی (safe + realistic choices you can get into)
+  const reachable = pessimistic.length + realistic.length;
   const allCutoffs = bucketed.map((r) => r.cutoff).sort((a, b) => a - b);
   const medianRank = allCutoffs.length
     ? allCutoffs[Math.floor(allCutoffs.length / 2)]
