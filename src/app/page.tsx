@@ -1137,7 +1137,12 @@ function LoadingState() {
         <CardContent className="py-6">
           <div className="grid grid-cols-3 gap-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-20 rounded-lg bg-muted/40 animate-pulse" />
+              <div
+                key={i}
+                className="h-20 rounded-lg overflow-hidden relative bg-muted/30"
+              >
+                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
+              </div>
             ))}
           </div>
         </CardContent>
@@ -1145,15 +1150,30 @@ function LoadingState() {
       {[0, 1, 2].map((i) => (
         <Card key={i}>
           <CardContent className="py-4 space-y-3">
-            <div className="h-6 w-44 bg-muted/40 animate-pulse rounded" />
+            <div className="h-6 w-44 rounded overflow-hidden relative bg-muted/30">
+              <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-foreground/10 to-transparent" style={{ animationDelay: `${i * 0.2}s` }} />
+            </div>
             <div className="space-y-2">
-              <div className="h-14 bg-muted/30 animate-pulse rounded-lg" />
-              <div className="h-14 bg-muted/30 animate-pulse rounded-lg" />
-              <div className="h-14 bg-muted/30 animate-pulse rounded-lg" />
+              {[0, 1, 2].map((j) => (
+                <div
+                  key={j}
+                  className="h-14 rounded-lg overflow-hidden relative bg-muted/30"
+                >
+                  <div
+                    className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-foreground/10 to-transparent"
+                    style={{ animationDelay: `${(i * 3 + j) * 0.15}s` }}
+                  />
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       ))}
+      <style>{`
+        @keyframes shimmer {
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </div>
   )
 }
@@ -2690,6 +2710,7 @@ function RowItem({
   isFav: (r: EstimatedRow) => boolean
   showBucketBadge?: boolean
 }) {
+  const [expanded, setExpanded] = useState(false)
   const chance = row.chance
   const chanceColor =
     chance >= 70 ? 'text-emerald-500' : chance >= 40 ? 'text-amber-500' : 'text-rose-500'
@@ -2712,6 +2733,27 @@ function RowItem({
       : row.bucket === 'realistic'
         ? 'text-amber-500 border-amber-500/30'
         : 'text-rose-500 border-rose-500/30'
+
+  // Generate advice text based on chance and bucket
+  const adviceText = useMemo(() => {
+    if (row.bucket === 'optimistic') {
+      if (chance >= 90) return 'انتخاب بسیار امن — این رشته‌محل را در اولویت‌های بالای لیست خود قرار دهید.'
+      return 'انتخاب امن — شانس قبولی بالاست. در دسته خوش‌بینانه جای می‌گیرد.'
+    }
+    if (row.bucket === 'realistic') {
+      return 'انتخاب منطقی — رتبه شما نزدیک به آخرین رتبه قبولی است. حتماً در لیست اولویت‌ها قرار دهید.'
+    }
+    return 'انتخاب شانسی — رتبه شما از آخرین رتبه قبولی بدتر است. به‌عنوان گزینه پشتیبان در انتهای لیست استفاده کنید.'
+  }, [row.bucket, chance])
+
+  // Compute rank ratio relative to cutoff
+  const rankRatio = row.cutoff > 0 ? (row.rankDistance / row.cutoff) * 100 : 0
+  const rankRatioText =
+    rankRatio > 0
+      ? `رتبه شما ${fa(Math.round(Math.abs(rankRatio)))}٪ بهتر از آخرین رتبه قبولی است`
+      : rankRatio < 0
+        ? `رتبه شما ${fa(Math.round(Math.abs(rankRatio)))}٪ بدتر از آخرین رتبه قبولی است`
+        : 'رتبه شما دقیقاً برابر با آخرین رتبه قبولی است'
 
   return (
     <motion.div
@@ -2769,11 +2811,37 @@ function RowItem({
             )}
           </div>
         </div>
-        <div className="text-left shrink-0">
-          <div className={cn('text-2xl font-extrabold leading-none tabular-nums', chanceColor)}>
-            {fa(chance)}٪
-          </div>
-          <div className="text-[10px] text-muted-foreground mt-1">شانس قبولی</div>
+        <div className="text-left shrink-0 flex flex-col items-end gap-1">
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className={cn('text-2xl font-extrabold leading-none tabular-nums cursor-help', chanceColor)}>
+                  {fa(chance)}٪
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-[220px] text-xs">
+                <p className="leading-5">
+                  شانس قبولی بر اساس فاصله رتبه شما تا آخرین رتبه قبولی سال گذشته محاسبه می‌شود.
+                  {chance >= 70 ? ' شانس بالا.' : chance >= 40 ? ' شانس متوسط.' : ' شانس پایین.'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <div className="text-[10px] text-muted-foreground">شانس قبولی</div>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-label={expanded ? 'بستن جزئیات' : 'نمایش جزئیات'}
+            aria-expanded={expanded}
+            className="mt-1 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
+          >
+            <motion.div
+              animate={{ rotate: expanded ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+            </motion.div>
+          </button>
         </div>
       </div>
       <div className="mt-3">
@@ -2782,6 +2850,62 @@ function RowItem({
           className={cn('h-1.5 bg-muted/60', `[&>div]:bg-gradient-to-l [&>div]:${chanceGradient}`)}
         />
       </div>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-3 pt-3 border-t border-border/40 space-y-2.5">
+              {/* Advice */}
+              <div className="flex items-start gap-2 p-2 rounded-md bg-foreground/[0.03]">
+                <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-muted-foreground leading-5">{adviceText}</p>
+              </div>
+              {/* Rank ratio bar */}
+              <div className="p-2 rounded-md bg-foreground/[0.03]">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] text-muted-foreground">مقایسه با آخرین رتبه قبولی</span>
+                  <span className={cn('text-[11px] font-bold tabular-nums', rankRatio > 0 ? 'text-emerald-500' : rankRatio < 0 ? 'text-rose-500' : 'text-muted-foreground')}>
+                    {rankRatio > 0 ? '+' : ''}{fa(Math.round(Math.abs(rankRatio)))}٪
+                  </span>
+                </div>
+                <div className="relative h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                  {/* Center line = cutoff */}
+                  <div className="absolute top-0 bottom-0 left-1/2 w-px bg-foreground/40" />
+                  {/* User position */}
+                  <div
+                    className={cn(
+                      'absolute top-0 bottom-0 rounded-full',
+                      rankRatio > 0 ? 'bg-emerald-500' : 'bg-rose-500'
+                    )}
+                    style={{
+                      // Bar fills from center towards right (better) or left (worse)
+                      right: rankRatio >= 0 ? `${50 - Math.min(50, Math.abs(rankRatio) / 2)}%` : '50%',
+                      left: rankRatio >= 0 ? '50%' : `${50 - Math.min(50, Math.abs(rankRatio) / 2)}%`,
+                    }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">{rankRatioText}</p>
+              </div>
+              {/* Stats row */}
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="p-2 rounded-md bg-foreground/[0.03]">
+                  <div className="text-muted-foreground">آخرین رتبه قبولی</div>
+                  <div className="font-mono font-bold tabular-nums">{faFmt(row.cutoff)}</div>
+                </div>
+                <div className="p-2 rounded-md bg-foreground/[0.03]">
+                  <div className="text-muted-foreground">نوع دانشگاه</div>
+                  <div className="font-bold">{UNIVERSITY_TYPE_LABEL[row.universityType]}</div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <style>{`
         .custom-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }

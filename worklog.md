@@ -605,3 +605,71 @@ Stage Summary:
 - Two new features ported to downloadable HTML: Quick-start example buttons, Theme toggle (light/dark with localStorage).
 - ESLint clean; dev server stable; no runtime errors.
 - Downloadable HTML now has feature parity for: rank estimation, filter/search/sort (including city), favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts, charts, collapsible stats card, quick-start examples, AND now theme toggle.
+
+---
+Task ID: 8
+Agent: cron-review (webDevReview)
+Task: QA pass + new features (row expand, tooltips, OG meta, shimmer loading)
+
+## Current project status description/assessment
+The project was feature-complete after Task 7 with: rank estimator, filter/search/sort (including city), favorites, history, chart view, print/PDF, keyboard shortcuts (? help dialog), deep-link sharing, comparison view, downloadable offline HTML with CSV/JSON/priority-list/favorites/charts/city-filter/collapsible-stats-card/quick-start/theme-toggle features. ESLint clean, no runtime errors. The recommended next-phase work items from Task 7 were:
+- PWA / offline support for main page.
+- Real Sanjesh data.
+- Sort dropdown SSR quirk.
+- Comparison view could be ported to downloadable HTML.
+- Row click → expand for more details (cutoff history, tips).
+
+## QA findings (via agent-browser + curl)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Downloadable HTML works offline (38 results, all features present).
+- All previously-added features verified working.
+- ESLint passes; no runtime errors in dev.log.
+
+## New features added (Main App)
+1. **Row click → expand for more details** (`RowItem` component):
+   - New `expanded` state per row, toggled by a chevron button next to the chance%.
+   - AnimatePresence animates height (0 ↔ auto) and opacity.
+   - Chevron rotates 180deg when expanded.
+   - `aria-expanded` + `aria-label` for screen readers.
+   - Expanded content includes:
+     - **Advice box** (amber Lightbulb icon) — contextual advice based on bucket (optimistic/realistic/pessimistic) and chance level (e.g., "انتخاب بسیار امن — این رشته‌محل را در اولویت‌های بالای لیست خود قرار دهید" for ≥90% optimistic).
+     - **Rank ratio bar** — a centered bar showing the user's position relative to the cutoff (50% = at cutoff, >50% = better, <50% = worse), with color (emerald=better, rose=worse) and a textual description (e.g., "رتبه شما ۲۳٪ بهتر از آخرین رتبه قبولی است").
+     - **Stats row** — 2-column grid showing "آخرین رتبه قبولی" (cutoff) and "نوع دانشگاه" (university type).
+2. **Tooltip on chance%** — hovering on the chance% number shows a tooltip:
+   - "شانس قبولی بر اساس فاصله رتبه شما تا آخرین رتبه قبولی سال گذشته محاسبه می‌شود." + "شانس بالا/متوسط/پایین." based on the level.
+   - Uses shadcn/ui Tooltip with 300ms delay, `side="left"`, `cursor-help`.
+   - `TooltipProvider` wraps each row's tooltip.
+3. **Open Graph + Twitter meta tags** in `layout.tsx`:
+   - `openGraph.locale: "fa_IR"`, `siteName`, `images` (1200×630 with alt text).
+   - `twitter.card: "summary_large_image"` with title, description, images.
+   - `robots: { index: true, follow: true }`.
+   - `applicationName`, `category: "education"`.
+   - Added `shortcut` icon.
+   - Extended `keywords` with "رتبه کنکور" and "انتخاب رشته کنکور".
+4. **Improved loading skeleton with shimmer effect** (`LoadingState`):
+   - Replaced `animate-pulse` with a custom `shimmer` keyframe animation (translateX from -100% to 100%).
+   - Each skeleton block has a gradient overlay that sweeps across.
+   - Staggered `animationDelay` for each block (0.15s increments) so they don't all shimmer in sync.
+   - More realistic loading state.
+
+## Verification (final)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Row expand: clicking "نمایش جزئیات" button toggles to "بستن جزئیات" with `aria-expanded: true`; advice text "انتخاب بسیار امن" visible; rank ratio bar "مقایسه با آخرین رتبه قبولی" visible.
+- Tooltip: hovering on chance% shows "شانس قبولی بر اساس فاصله رتبه شما تا آخرین رتبه قبولی سال گذشته محاسبه می‌شود. شانس بالا."
+- Loading skeleton: shimmer animation with staggered delays (visual verification).
+- Downloadable HTML: 120KB, all features still work (39 results, stats card present).
+- ESLint passes with zero errors/warnings.
+- No runtime errors in /home/z/my-project/dev.log.
+
+## Unresolved issues or risks, and priority recommendations for the next phase
+- **PWA / offline support** for main page — could add a service worker + manifest.json to make the main page itself work offline (currently only the downloadable HTML is offline-capable).
+- **Real Sanjesh data** — current dataset uses estimated cutoffs; real past-year admission data should be ingested.
+- **Sort dropdown SSR quirk** — still mitigated with the `key={mounted}` remount trick.
+- **Comparison view** could be ported to the downloadable HTML (currently only in main app).
+- **Row expand** could be ported to the downloadable HTML too.
+
+Stage Summary:
+- QA pass complete: no bugs found in current functionality.
+- Four new feature groups added to the main app: Row click → expand (advice + rank ratio bar + stats), Tooltip on chance%, Open Graph + Twitter meta tags, Shimmer loading skeleton.
+- ESLint clean; dev server stable; no runtime errors.
+- Downloadable HTML verified still working with all previously-added features.
