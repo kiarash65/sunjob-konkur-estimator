@@ -378,6 +378,26 @@ export async function GET(req: NextRequest) {
     <section id="resultArea" style="display:none">
       <div class="summary" id="summaryBox"></div>
 
+      <!-- Collapsible statistics card -->
+      <div class="card" id="statsCard" style="margin-bottom: 16px; border-color: rgba(139,92,246,0.3); background: linear-gradient(135deg, rgba(139,92,246,0.05), transparent);">
+        <div id="statsCardHeader" style="display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; user-select:none;" role="button" tabindex="0" aria-expanded="true" aria-controls="statsCardBody">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:18px;">📊</span>
+            <div>
+              <h3 style="margin:0; font-size:14px;">تحلیل آماری رتبه</h3>
+              <p id="statsCardMeta" style="margin:0; font-size:11px; color:var(--muted);"></p>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span id="statsCardTier" style="font-size:10px; padding:2px 8px; border-radius:999px; border:1px solid; "></span>
+            <span id="statsCardChevron" style="transition: transform 0.2s;">▼</span>
+          </div>
+        </div>
+        <div id="statsCardBody" style="margin-top: 12px;">
+          <div id="statsCardContent"></div>
+        </div>
+      </div>
+
       <div class="card" style="margin-bottom: 16px; padding: 14px;">
         <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
           <div style="position:relative; flex:1; min-width:180px;">
@@ -393,6 +413,9 @@ export async function GET(req: NextRequest) {
           </select>
           <select id="uniTypeSel" aria-label="فیلتر نوع دانشگاه" style="background:rgba(255,255,255,.04); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:10px 14px; font:inherit; outline:none; cursor:pointer;">
             <option value="">همه انواع دانشگاه</option>
+          </select>
+          <select id="citySel" aria-label="فیلتر بر اساس شهر" style="background:rgba(255,255,255,.04); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:10px 14px; font:inherit; outline:none; cursor:pointer;">
+            <option value="">همه شهرها</option>
           </select>
         </div>
         <div id="filterInfo" style="margin-top:8px; font-size:12px; color:var(--muted); display:none;"></div>
@@ -688,12 +711,13 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
 
   // Global state for filter/search/sort
   var currentResult = null;
-  var filterState = { search: '', sortBy: 'chance', uniType: '' };
+  var filterState = { search: '', sortBy: 'chance', uniType: '', city: '' };
 
   function applyFiltersAndSort(list) {
     var q = filterState.search.trim().toLowerCase();
     var filtered = list.filter(function (r) {
       if (filterState.uniType && r.universityType !== filterState.uniType) return false;
+      if (filterState.city && r.city !== filterState.city) return false;
       if (q) {
         var hay = (r.major + ' ' + r.university + ' ' + (r.city || '')).toLowerCase();
         if (hay.indexOf(q) === -1) return false;
@@ -733,7 +757,146 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
       uniTypeSel.appendChild(opt);
     });
 
+    // Populate city filter options (only cities present in this result)
+    var citySel = document.getElementById('citySel');
+    var presentCities = {};
+    allRows.forEach(function (r) { if (r.city) presentCities[r.city] = 0; });
+    allRows.forEach(function (r) { if (r.city) presentCities[r.city]++; });
+    while (citySel.options.length > 1) citySel.remove(1);
+    Object.keys(presentCities).sort(function (a, b) { return a.localeCompare(b, 'fa'); }).forEach(function (c) {
+      var opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c + ' (' + fa(presentCities[c]) + ')';
+      citySel.appendChild(opt);
+    });
+
     reRender();
+    renderStatsCard(result);
+  }
+
+  // ───── Collapsible statistics card ─────
+  function computeStatsLocal(result) {
+    var allRows = result.optimistic.concat(result.realistic, result.pessimistic);
+    var cutoffs = allRows.map(function (r) { return r.cutoff; }).sort(function (a, b) { return a - b; });
+    var n = cutoffs.length;
+    var sum = cutoffs.reduce(function (a, b) { return a + b; }, 0);
+    var mean = n ? sum / n : 0;
+    var median = n ? cutoffs[Math.floor(n / 2)] : 0;
+    var variance = n ? cutoffs.reduce(function (acc, c) { return acc + Math.pow(c - mean, 2); }, 0) / n : 0;
+    var stdDev = Math.sqrt(variance);
+    var best = n ? cutoffs[0] : 0;
+    var worst = n ? cutoffs[n - 1] : 0;
+    var harder = cutoffs.filter(function (c) { return c < result.rank; }).length;
+    var userPercentile = n ? Math.round((harder / n) * 100) : 0;
+    var chances = allRows.map(function (r) { return r.chance; });
+    var averageChance = n ? Math.round(chances.reduce(function (a, b) { return a + b; }, 0) / n) : 0;
+    var reachRate = n ? (result.summary.reachableCount / n) * 100 : 0;
+    var tier, tierLabel, tierDesc;
+    if (reachRate >= 80) { tier = 'excellent'; tierLabel = 'عالی'; tierDesc = 'رتبه شما در محدوده بسیار خوبی قرار دارد — شانس قبولی در اکثر رشته‌محل‌ها بالاست.'; }
+    else if (reachRate >= 60) { tier = 'good'; tierLabel = 'خوب'; tierDesc = 'رتبه شما نسبتاً خوب است — گزینه‌های قابل قبولی در دسترس شماست.'; }
+    else if (reachRate >= 40) { tier = 'fair'; tierLabel = 'متوسط'; tierDesc = 'رتبه شما متوسط است — باید با دقت انتخاب کنید و سهم گزینه‌های منطقی را بیشتر کنید.'; }
+    else if (reachRate >= 20) { tier = 'challenging'; tierLabel = 'چالشی'; tierDesc = 'رتبه شما چالش‌برانگیز است — روی گزینه‌های منطقی و بدبینانه تمرکز کنید.'; }
+    else { tier = 'difficult'; tierLabel = 'دشوار'; tierDesc = 'رتبه شما دشوار است — گزینه‌های امن کم است؛ باید واقع‌بینانه انتخاب کنید.'; }
+    return {
+      userRank: result.rank,
+      mean: Math.round(mean), median: median, stdDev: Math.round(stdDev),
+      best: best, worst: worst,
+      userPercentile: userPercentile, averageChance: averageChance,
+      reachable: result.summary.reachableCount, outOfReach: result.pessimistic.length,
+      total: n, tier: tier, tierLabel: tierLabel, tierDesc: tierDesc
+    };
+  }
+
+  var tierColors = {
+    excellent: { bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.5)', text: '#10b981' },
+    good: { bg: 'rgba(20,184,166,0.1)', border: 'rgba(20,184,166,0.5)', text: '#14b8a6' },
+    fair: { bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.5)', text: '#f59e0b' },
+    challenging: { bg: 'rgba(249,115,22,0.1)', border: 'rgba(249,115,22,0.5)', text: '#f97316' },
+    difficult: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.5)', text: '#ef4444' }
+  };
+
+  function renderStatsCard(result) {
+    var stats = computeStatsLocal(result);
+    var gLabel = GROUP_LABELS[result.group] || result.group;
+    var qLabel = QUOTA_LABELS[result.quota] || result.quota;
+    var meta = document.getElementById('statsCardMeta');
+    if (meta) meta.textContent = gLabel + ' — ' + qLabel + ' — رتبه ' + faFmt(result.rank);
+    var tierEl = document.getElementById('statsCardTier');
+    var tc = tierColors[stats.tier];
+    if (tierEl) {
+      tierEl.textContent = stats.tierLabel;
+      tierEl.style.background = tc.bg;
+      tierEl.style.borderColor = tc.border;
+      tierEl.style.color = tc.text;
+    }
+    // Percentile color
+    var pColor = stats.userPercentile < 20 ? 'linear-gradient(90deg, #10b981, #2dd4bf)'
+      : stats.userPercentile < 50 ? 'linear-gradient(90deg, #14b8a6, #fbbf24)'
+      : stats.userPercentile < 80 ? 'linear-gradient(90deg, #f59e0b, #fb923c)'
+      : 'linear-gradient(90deg, #f97316, #ef4444)';
+
+    var html = ''
+      + '<p style="margin:0 0 12px; font-size:12px; color: var(--muted); line-height:1.8;">' + stats.tierDesc + '</p>'
+      // Percentile bar
+      + '<div style="margin-bottom:12px; padding:10px; border-radius:8px; background: rgba(255,255,255,0.03); border:1px solid var(--border);">'
+      + '  <div style="display:flex; justify-content:space-between; margin-bottom:6px;">'
+      + '    <span style="font-size:11px; color:var(--muted);">جایگاه شما نسبت به سایر رشته‌محل‌ها</span>'
+      + '    <span style="font-size:12px; font-weight:700; color:#a78bfa;">صدک: ' + fa(stats.userPercentile) + '٪</span>'
+      + '  </div>'
+      + '  <div style="position:relative; height:10px; background:rgba(255,255,255,0.07); border-radius:5px; overflow:hidden;">'
+      + '    <div style="position:absolute; inset:0; right:0; width:' + Math.max(2, stats.userPercentile) + '%; background:' + pColor + ';"></div>'
+      + '  </div>'
+      + '  <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:10px; color:var(--muted);">'
+      + '    <span>بهتر</span><span>بدتر</span>'
+      + '  </div>'
+      + '</div>'
+      // Stats grid (2 cols mobile, 3 cols desktop)
+      + '<div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;">'
+      + '  <div style="padding:8px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.03); text-align:center;">'
+      + '    <div style="font-size:10px; color:var(--muted);">میانگین</div><div style="font-size:13px; font-weight:700;">' + faFmt(stats.mean) + '</div>'
+      + '  </div>'
+      + '  <div style="padding:8px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.03); text-align:center;">'
+      + '    <div style="font-size:10px; color:var(--muted);">میانه</div><div style="font-size:13px; font-weight:700;">' + faFmt(stats.median) + '</div>'
+      + '  </div>'
+      + '  <div style="padding:8px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.03); text-align:center;">'
+      + '    <div style="font-size:10px; color:var(--muted);">انحراف معیار</div><div style="font-size:13px; font-weight:700;">' + faFmt(stats.stdDev) + '</div>'
+      + '  </div>'
+      + '  <div style="padding:8px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.03); text-align:center;">'
+      + '    <div style="font-size:10px; color:var(--muted);">سخت‌ترین ورود</div><div style="font-size:13px; font-weight:700;">' + faFmt(stats.best) + '</div>'
+      + '  </div>'
+      + '  <div style="padding:8px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.03); text-align:center;">'
+      + '    <div style="font-size:10px; color:var(--muted);">آسان‌ترین ورود</div><div style="font-size:13px; font-weight:700;">' + faFmt(stats.worst) + '</div>'
+      + '  </div>'
+      + '  <div style="padding:8px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.03); text-align:center;">'
+      + '    <div style="font-size:10px; color:var(--muted);">میانگین شانس</div><div style="font-size:13px; font-weight:700;">' + fa(stats.averageChance) + '٪</div>'
+      + '  </div>'
+      + '</div>'
+      // Reach vs out-of-reach badges
+      + '<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">'
+      + '  <span style="font-size:10px; padding:2px 8px; border-radius:4px; border:1px solid rgba(16,185,129,0.3); color:#10b981;">✓ ' + fa(stats.reachable) + ' در دسترس</span>'
+      + '  <span style="font-size:10px; padding:2px 8px; border-radius:4px; border:1px solid rgba(239,68,68,0.3); color:#ef4444;">⚠ ' + fa(stats.outOfReach) + ' خارج از دسترس</span>'
+      + '</div>';
+    var content = document.getElementById('statsCardContent');
+    if (content) content.innerHTML = html;
+  }
+
+  // Stats card collapse toggle
+  var statsCardCollapsed = false;
+  function setupStatsCardToggle() {
+    var header = document.getElementById('statsCardHeader');
+    if (!header) return;
+    function toggle() {
+      statsCardCollapsed = !statsCardCollapsed;
+      var body = document.getElementById('statsCardBody');
+      var chevron = document.getElementById('statsCardChevron');
+      if (body) body.style.display = statsCardCollapsed ? 'none' : 'block';
+      if (chevron) chevron.style.transform = statsCardCollapsed ? 'rotate(-90deg)' : 'rotate(0)';
+      header.setAttribute('aria-expanded', statsCardCollapsed ? 'false' : 'true');
+    }
+    header.addEventListener('click', toggle);
+    header.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
   }
 
   function reRender() {
@@ -757,7 +920,7 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
 
     // Update filter info text
     var info = document.getElementById('filterInfo');
-    if (filterState.search || filterState.uniType) {
+    if (filterState.search || filterState.uniType || filterState.city) {
       info.style.display = 'block';
       info.innerHTML = 'نمایش <strong>' + fa(filtered.length) + '</strong> مورد از <strong>' + fa(allRows.length) + '</strong> رشته‌محل' +
         ' <a href="#" id="clearFilters" style="color: #5eead4; text-decoration: none; margin-right: 8px;">↺ پاک کردن فیلتر</a>';
@@ -767,8 +930,10 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
           e.preventDefault();
           filterState.search = '';
           filterState.uniType = '';
+          filterState.city = '';
           document.getElementById('searchInput').value = '';
           document.getElementById('uniTypeSel').value = '';
+          document.getElementById('citySel').value = '';
           reRender();
         });
       }
@@ -806,6 +971,10 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
   });
   document.getElementById('uniTypeSel').addEventListener('change', function (e) {
     filterState.uniType = e.target.value;
+    reRender();
+  });
+  document.getElementById('citySel').addEventListener('change', function (e) {
+    filterState.city = e.target.value;
     reRender();
   });
 
@@ -849,6 +1018,9 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
   // ───── Favorites event listeners ─────
   // Load favorites from localStorage on init
   loadFavorites();
+
+  // Setup stats card collapse toggle
+  setupStatsCardToggle();
 
   document.getElementById('favBtn').addEventListener('click', function () {
     var panel = document.getElementById('favPanel');

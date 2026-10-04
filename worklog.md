@@ -436,3 +436,90 @@ Stage Summary:
 - Accessibility: skip-to-content link, prefers-reduced-motion support, visible focus-visible styles.
 - ESLint clean; dev server stable; no runtime errors.
 - Downloadable HTML now has full feature parity with the main app for: rank estimation, filter/search/sort, favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts, AND now charts.
+
+---
+Task ID: 6
+Agent: cron-review (webDevReview)
+Task: QA pass + new features (3-state theme toggle, collapsible stats, city filter, quick-start)
+
+## Current project status description/assessment
+The project was feature-complete after Task 5 with: rank estimator, filter/search/sort, favorites, history, chart view, print/PDF, keyboard shortcuts, deep-link sharing, downloadable offline HTML with CSV/JSON/priority-list/favorites/charts features. ESLint clean, no runtime errors. The recommended next-phase work items from Task 5 were:
+- 3-state theme toggle (light/dark/system) — not implemented yet.
+- PWA / offline support for main page.
+- Real Sanjesh data.
+- Mobile bottom-sheet could include priority list and chart views.
+- Statistics card could be collapsible.
+
+## QA findings (via agent-browser + curl)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Downloadable HTML works offline (38 results, chart view renders 2 SVGs).
+- All previously-added features verified working.
+- ESLint passes; no runtime errors in dev.log.
+
+## New features added (Main App)
+1. **3-state theme toggle (light/dark/system)** — converted the 2-state button (light/dark) into a dropdown menu with 3 explicit options:
+   - Each option has an icon (Sun/Moon/Monitor) and a checkmark when selected.
+   - The trigger button shows the icon corresponding to the current theme.
+   - AnimatePresence handles smooth icon transitions.
+   - `title` attribute shows "تم فعلی: تاریک/روشن/سیستم".
+2. **Collapsible StatisticsCard** — the card header is now clickable:
+   - Click or keyboard activate toggles collapse via `useState(false)`.
+   - AnimatePresence animates height (0 ↔ auto) and opacity.
+   - Chevron rotates -90deg when collapsed.
+   - `aria-expanded` + `aria-controls` for screen readers.
+   - "نمایش جزئیات" / "بستن جزئیات" label on desktop.
+3. **City filter** — new `<Select>` dropdown after the university-type filter:
+   - Populated dynamically with only the cities present in the current result (e.g., تهران ۳۱, اصفهان ۷, تبریز ۳, ...).
+   - "همه شهرها" option shows the total count.
+   - Each city option shows its count.
+   - Only shown when `availableCities.length > 1`.
+   - Applies to both tabs and all-list views.
+   - Added to the mobile sheet too (as a Select).
+   - `resetFilters()` now also clears the city filter.
+   - Filter count badge and "showing X of Y" condition include `cityFilter`.
+4. **Quick-start example buttons** in EmptyState:
+   - 4 example scenarios as clickable cards: ریاضی/منطقه ۱/رتبه ۱۵۰۰, تجربی/منطقه ۳/رتبه ۸۰۰۰, انسانی/منطقه ۲/رتبه ۴۰۰۰, هنر/منطقه ۱/رتبه ۳۰۰۰.
+   - Each card shows emoji, label, and short description.
+   - Hover effect: border turns emerald, label text turns emerald, chevron animates.
+   - Clicking sets the form fields + auto-submits (via `submitEstimate`).
+
+## New features ported to downloadable HTML
+1. **City filter** — `<select id="citySel">` dropdown:
+   - Populated dynamically with cities present in the result, each with count.
+   - Sorts cities alphabetically (Persian locale).
+   - Event listener calls `reRender()`.
+   - `filterState.city` added; `applyFiltersAndSort` respects it.
+   - Clear-filters link now also resets city.
+2. **Collapsible statistics card** — `<div id="statsCard">` with header + body:
+   - `renderStatsCard(result)` computes: mean, median, std dev, best (hardest), worst (easiest), user percentile, average chance, reach count, out-of-reach count, tier (excellent/good/fair/challenging/difficult), tier label + description.
+   - Renders: tier description, percentile bar (gradient + "صدک: X٪"), 6 stat tiles in 3-column grid, reach/out-of-reach badges.
+   - `setupStatsCardToggle()` wires click + keyboard (Enter/Space) handlers on the header.
+   - Chevron rotates -90deg when collapsed; `aria-expanded` updates.
+   - Called after every `render()`.
+
+## Verification (final)
+- Main page deep-link `?g=riazi&q=region1&r=2500&auto=1`: tabs show 38/4/18, no errors.
+- Theme dropdown: opens with 3 options (روشن/تاریک/سیستم); selecting "سیستم" sets html class to "light" (resolved from system).
+- City filter: opens with 14 cities (تهران ۳۱, اصفهان ۷, تبریز ۳, ...); selecting "اصفهان" narrows results to 7 (filter info: "نمایش ۷ مورد از ۶۰ رشته‌محل").
+- Stats card collapse: clicking header sets `aria-expanded: false`, body height to 0, chevron rotated -90deg; clicking again expands.
+- Quick-start: clicking "ریاضی — منطقه ۱ — رتبه ۱۵۰۰" auto-fills form + submits, URL becomes `?g=riazi&q=region1&r=1500`, tabs show 43/1/16.
+- Downloadable HTML: 114KB (was 103KB), all new features present.
+- Offline city filter: 15 options (همه + 14 cities with counts); selecting "اصفهان" narrows to 7 results.
+- Offline stats card: renders tier "خوب", meta "ریاضی — منطقه یک — رتبه ۲,۵۰۰", percentile bar "صدک: ۳۵٪", 6 stat tiles (mean ۱۲,۱۱۴ / median ۴,۸۰۰ / std dev ۱۵,۳۲۷ / hardest ۱۵۰ / easiest ۶۵,۰۰۰ / avg chance ۶۶٪), reach/out-of-reach badges (۴۲ در دسترس / ۱۸ خارج از دسترس).
+- Offline stats collapse: clicking header hides body, rotates chevron, updates aria-expanded.
+- ESLint passes with zero errors/warnings.
+- No runtime errors in /home/z/my-project/dev.log.
+
+## Unresolved issues or risks, and priority recommendations for the next phase
+- **PWA / offline support** for main page — could add a service worker + manifest.json to make the main page itself work offline (currently only the downloadable HTML is offline-capable).
+- **Real Sanjesh data** — current dataset uses estimated cutoffs; real past-year admission data should be ingested.
+- **Sort dropdown SSR quirk** — still mitigated with the `key={mounted}` remount trick.
+- **Quick-start examples** could be added to the downloadable HTML too (currently only in main app).
+- **Theme toggle** in downloadable HTML — currently hardcoded to dark; could add a localStorage-based toggle.
+
+Stage Summary:
+- QA pass complete: no bugs found in current functionality.
+- Four new feature groups added to the main app: 3-state theme dropdown (light/dark/system), collapsible StatisticsCard, city filter (advanced filter), quick-start example buttons in EmptyState.
+- Two new features ported to downloadable HTML: city filter, collapsible statistics card with full stats computation.
+- ESLint clean; dev server stable; no runtime errors.
+- Downloadable HTML now has feature parity for: rank estimation, filter/search/sort (including city), favorites, priority list, CSV/JSON export, copy priority list, print/PDF, keyboard shortcuts, charts, AND now collapsible stats card.

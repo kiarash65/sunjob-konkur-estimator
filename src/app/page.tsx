@@ -55,6 +55,11 @@ import {
   Wand2,
   Lightbulb,
   Info,
+  Monitor,
+  ChevronLeft,
+  ChevronRight,
+  Sparkle,
+  MapPin as MapPinIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -544,29 +549,65 @@ export default function Home() {
                 </span>
               )}
             </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="تغییر تم"
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              suppressHydrationWarning
-            >
-              {mounted ? (
-                <AnimatePresence mode="wait">
-                  {isDark ? (
-                    <motion.div key="sun" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}>
-                      <Sun className="w-4 h-4" />
-                    </motion.div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="تغییر تم"
+                  suppressHydrationWarning
+                  title={mounted ? `تم فعلی: ${theme === 'dark' ? 'تاریک' : theme === 'light' ? 'روشن' : 'سیستم'}` : 'تغییر تم'}
+                >
+                  {mounted ? (
+                    <AnimatePresence mode="wait">
+                      {theme === 'dark' ? (
+                        <motion.div key="moon" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}>
+                          <Moon className="w-4 h-4" />
+                        </motion.div>
+                      ) : theme === 'light' ? (
+                        <motion.div key="sun" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.2 }}>
+                          <Sun className="w-4 h-4" />
+                        </motion.div>
+                      ) : (
+                        <motion.div key="system" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }} transition={{ duration: 0.2 }}>
+                          <Monitor className="w-4 h-4" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   ) : (
-                    <motion.div key="moon" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.2 }}>
-                      <Moon className="w-4 h-4" />
-                    </motion.div>
+                    <Sun className="w-4 h-4" />
                   )}
-                </AnimatePresence>
-              ) : (
-                <Sun className="w-4 h-4" />
-              )}
-            </Button>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuLabel className="text-xs">انتخاب تم</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setTheme('light')}
+                  className="text-sm cursor-pointer flex items-center gap-2"
+                >
+                  <Sun className="w-4 h-4" />
+                  <span className="flex-1">روشن</span>
+                  {mounted && theme === 'light' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setTheme('dark')}
+                  className="text-sm cursor-pointer flex items-center gap-2"
+                >
+                  <Moon className="w-4 h-4" />
+                  <span className="flex-1">تاریک</span>
+                  {mounted && theme === 'dark' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setTheme('system')}
+                  className="text-sm cursor-pointer flex items-center gap-2"
+                >
+                  <Monitor className="w-4 h-4" />
+                  <span className="flex-1">سیستم</span>
+                  {mounted && theme === 'system' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -769,7 +810,16 @@ export default function Home() {
             <AnimatePresence mode="wait">
               {!result && !loading && (
                 <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <EmptyState onDownload={onDownloadHTML} />
+                  <EmptyState
+                    onDownload={onDownloadHTML}
+                    onQuickStart={(g, q, r) => {
+                      setGroup(g)
+                      setQuota(q)
+                      setRankInput(String(r))
+                      setUserTouched(true)
+                      setTimeout(() => submitEstimate(g, q, r), 50)
+                    }}
+                  />
                 </motion.div>
               )}
               {loading && (
@@ -942,7 +992,19 @@ export default function Home() {
   )
 }
 
-function EmptyState({ onDownload }: { onDownload: () => void }) {
+function EmptyState({
+  onDownload,
+  onQuickStart,
+}: {
+  onDownload: () => void
+  onQuickStart: (g: GroupKey, q: QuotaKey, r: number) => void
+}) {
+  const examples: { g: GroupKey; q: QuotaKey; r: number; label: string; emoji: string; desc: string }[] = [
+    { g: 'riazi', q: 'region1', r: 1500, label: 'ریاضی — منطقه ۱ — رتبه ۱۵۰۰', emoji: '📐', desc: 'رتبه متوسط رو به بالا' },
+    { g: 'tajrobi', q: 'region3', r: 8000, label: 'تجربی — منطقه ۳ — رتبه ۸۰۰۰', emoji: '🔬', desc: 'منطقه روستایی' },
+    { g: 'ensani', q: 'region2', r: 4000, label: 'انسانی — منطقه ۲ — رتبه ۴۰۰۰', emoji: '📜', desc: 'مراکز استان' },
+    { g: 'honar', q: 'region1', r: 3000, label: 'هنر — منطقه ۱ — رتبه ۳۰۰۰', emoji: '🎨', desc: 'کلان‌شهرها' },
+  ]
   return (
     <Card className="border-dashed border-2 border-border/60 bg-card/40">
       <CardContent className="py-14 text-center">
@@ -957,11 +1019,35 @@ function EmptyState({ onDownload }: { onDownload: () => void }) {
         <h3 className="text-lg font-bold mb-2">هنوز تخمینی ساخته نشده</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto leading-7">
           گروه آزمایشی، سهمیه و رتبه خود را وارد کنید و دکمه «مشاهده تخمین رشته قبولی» را بزنید.
-          همچنین می‌توانید همین نرم افزار را به‌صورت یک فایل HTML مستقل دانلود کنید.
+          یا برای شروع سریع، یکی از نمونه‌های زیر را امتحان کنید:
         </p>
-        <Button onClick={onDownload} variant="outline" className="mt-5">
-          <Download className="w-4 h-4" /> دانلود نسخه HTML
-        </Button>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-5 max-w-md mx-auto">
+          {examples.map((ex) => (
+            <button
+              key={ex.label}
+              type="button"
+              onClick={() => onQuickStart(ex.g, ex.q, ex.r)}
+              className="group flex items-center gap-2 p-3 rounded-lg border border-border/60 bg-background/50 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all text-right"
+              aria-label={`شروع سریع با ${ex.label}`}
+            >
+              <span className="text-xl shrink-0">{ex.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold leading-5 group-hover:text-emerald-500 transition-colors">
+                  {ex.label}
+                </p>
+                <p className="text-[10px] text-muted-foreground">{ex.desc}</p>
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground rotate-90 group-hover:text-emerald-500 transition-all shrink-0" />
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-5">
+          <Button onClick={onDownload} variant="outline">
+            <Download className="w-4 h-4" /> دانلود نسخه HTML
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )
@@ -1020,9 +1106,24 @@ function ResultView({
   const [search, setSearch] = useState('')
   const [uniTypeFilter, setUniTypeFilter] = useState<Set<UniversityType>>(new Set())
   const [minChance, setMinChance] = useState(0)
+  const [cityFilter, setCityFilter] = useState<string>('') // '' = all cities
   const [view, setView] = useState<'tabs' | 'all' | 'chart' | 'priority'>('tabs')
   const [sortBy, setSortBy] = useState<'chance' | 'cutoff-asc' | 'cutoff-desc' | 'major' | 'university'>('chance')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+
+  // Combined filtered list (must be declared before availableCities which depends on it)
+  const allRows = useMemo(() => {
+    return [...result.optimistic, ...result.realistic, ...result.pessimistic]
+  }, [result])
+
+  // Compute list of unique cities for the city filter dropdown (only cities present in this result)
+  const availableCities = useMemo(() => {
+    const set = new Set<string>()
+    allRows.forEach((r) => {
+      if (r.city) set.add(r.city)
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fa'))
+  }, [allRows])
 
   // Recommended priority list (memoized on result change)
   const priorityList = useMemo(() => buildPriorityList(result), [result])
@@ -1030,16 +1131,12 @@ function ResultView({
   // Detailed statistics (memoized on result change)
   const detailedStats = useMemo(() => computeDetailedStats(result), [result])
 
-  // Combined filtered list
-  const allRows = useMemo(() => {
-    return [...result.optimistic, ...result.realistic, ...result.pessimistic]
-  }, [result])
-
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()
     const filtered = allRows.filter((r) => {
       if (uniTypeFilter.size > 0 && !uniTypeFilter.has(r.universityType)) return false
       if (r.chance < minChance) return false
+      if (cityFilter && r.city !== cityFilter) return false
       if (q) {
         const hay = (r.major + ' ' + r.university + ' ' + (r.city || '')).toLowerCase()
         if (!hay.includes(q)) return false
@@ -1066,7 +1163,7 @@ function ResultView({
         break
     }
     return sorted
-  }, [allRows, search, uniTypeFilter, minChance, sortBy])
+  }, [allRows, search, uniTypeFilter, minChance, cityFilter, sortBy])
 
   const bucketCount = (rows: EstimatedRow[], bucket: 'optimistic' | 'realistic' | 'pessimistic') =>
     rows.filter((r) => r.bucket === bucket).length
@@ -1162,6 +1259,7 @@ function ResultView({
     setSearch('')
     setUniTypeFilter(new Set())
     setMinChance(0)
+    setCityFilter('')
   }
 
   return (
@@ -1238,10 +1336,10 @@ function ResultView({
             >
               <Filter className="w-4 h-4" />
               فیلترها
-              {(search || uniTypeFilter.size > 0 || minChance > 0) && (
+              {(search || uniTypeFilter.size > 0 || minChance > 0 || cityFilter) && (
                 <Badge variant="secondary" className="me-1 ms-1 text-[10px] px-1.5 py-0">
                   {fa(
-                    (search ? 1 : 0) + uniTypeFilter.size + (minChance > 0 ? 1 : 0)
+                    (search ? 1 : 0) + uniTypeFilter.size + (minChance > 0 ? 1 : 0) + (cityFilter ? 1 : 0)
                   )}
                 </Badge>
               )}
@@ -1347,6 +1445,29 @@ function ResultView({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {availableCities.length > 1 && (
+              <Select value={cityFilter} onValueChange={(v) => setCityFilter(v === '__all__' ? '' : v)}>
+                <SelectTrigger
+                  aria-label="فیلتر بر اساس شهر"
+                  className="h-9 w-[120px] sm:w-[140px] text-xs"
+                >
+                  <MapPinIcon className="w-3.5 h-3.5 text-muted-foreground ms-1" />
+                  <SelectValue placeholder="همه شهرها" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">همه شهرها ({fa(allRows.length)})</SelectItem>
+                  {availableCities.map((c) => {
+                    const count = allRows.filter((r) => r.city === c).length
+                    return (
+                      <SelectItem key={c} value={c}>
+                        {c} ({fa(count)})
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            )}
 
             <div className="flex items-center gap-2 px-2 h-9 border border-border/60 rounded-md bg-background/50">
               <span className="text-xs text-muted-foreground whitespace-nowrap">حداقل شانس:</span>
@@ -1498,7 +1619,7 @@ function ResultView({
             </Button>
           </div>
 
-          {(search || uniTypeFilter.size > 0 || minChance > 0) && (
+          {(search || uniTypeFilter.size > 0 || minChance > 0 || cityFilter) && (
             <div className="mt-3 text-xs text-muted-foreground flex items-center gap-2">
               <span>
                 نمایش <span className="font-bold text-foreground">{fa(filteredRows.length)}</span> مورد از{' '}
@@ -1573,6 +1694,27 @@ function ResultView({
                 ))}
               </div>
             </div>
+            {availableCities.length > 1 && (
+              <div className="space-y-2">
+                <Label>شهر</Label>
+                <Select value={cityFilter || '__all__'} onValueChange={(v) => setCityFilter(v === '__all__' ? '' : v)}>
+                  <SelectTrigger className="w-full" aria-label="فیلتر بر اساس شهر">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">همه شهرها ({fa(allRows.length)})</SelectItem>
+                    {availableCities.map((c) => {
+                      const count = allRows.filter((r) => r.city === c).length
+                      return (
+                        <SelectItem key={c} value={c}>
+                          {c} ({fa(count)})
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>مرتب‌سازی</Label>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
@@ -1592,7 +1734,7 @@ function ResultView({
               <Button onClick={() => setMobileFiltersOpen(false)} className="flex-1">
                 اعمال فیلترها
               </Button>
-              {(search || uniTypeFilter.size > 0 || minChance > 0) && (
+              {(search || uniTypeFilter.size > 0 || minChance > 0 || cityFilter) && (
                 <Button variant="outline" onClick={resetFilters}>
                   <RotateCcw className="w-4 h-4" /> پاک کردن
                 </Button>
@@ -2030,6 +2172,7 @@ function StatisticsCard({
   groupInfo: { key: GroupKey; label: string; emoji: string; color: string }
   quotaInfo: { key: QuotaKey; label: string; description: string }
 }) {
+  const [collapsed, setCollapsed] = useState(false)
   const tierColorMap = {
     excellent: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
     good: 'text-teal-500 bg-teal-500/10 border-teal-500/30',
@@ -2063,7 +2206,7 @@ function StatisticsCard({
 
   return (
     <Card className="border-border/60 bg-gradient-to-br from-violet-500/5 via-card to-card overflow-hidden">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 cursor-pointer select-none" onClick={() => setCollapsed((c) => !c)} role="button" tabIndex={0} aria-expanded={!collapsed} aria-controls="stats-card-body">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg bg-violet-500/15 flex items-center justify-center">
@@ -2082,8 +2225,31 @@ function StatisticsCard({
               </CardDescription>
             </div>
           </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="text-[11px] hidden sm:inline">
+              {collapsed ? 'نمایش جزئیات' : 'بستن جزئیات'}
+            </span>
+            <motion.div
+              animate={{ rotate: collapsed ? -90 : 0 }}
+              transition={{ duration: 0.2 }}
+              className="p-1 rounded-md hover:bg-foreground/5"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </motion.div>
+          </div>
         </div>
       </CardHeader>
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+            id="stats-card-body"
+          >
       <CardContent>
         <p className="text-xs text-muted-foreground leading-6 mb-3 px-1">
           {stats.tierDescription}
@@ -2146,6 +2312,9 @@ function StatisticsCard({
           </Badge>
         </div>
       </CardContent>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Card>
   )
 }
