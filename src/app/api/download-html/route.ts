@@ -304,6 +304,23 @@ export async function GET(req: NextRequest) {
   details.faq summary { cursor: pointer; color: #fff; font-weight: 700; font-size: 14px; }
   details.faq[open] summary { margin-bottom: 8px; }
   details.faq p { margin: 0; color: var(--text-soft); font-size: 13px; line-height: 1.9; }
+
+  /* Print styles — clean white output with form/filter chrome hidden */
+  @media print {
+    html, body { background: white !important; color: black !important; }
+    .hero, .card, .bucket, .row, .stat, .info-card, details.faq { background: white !important; color: black !important; border-color: #ccc !important; }
+    .muted, .text-muted { color: #555 !important; }
+    /* Hide form, filter bar, save/print buttons, FAQ, info cards, footer */
+    #estForm, .hero .pill, #saveBtn, #printBtn, .tips, footer, #filterInfo { display: none !important; }
+    /* Only show resultArea */
+    body > .wrap > * { display: none !important; }
+    body > .wrap > main { display: block !important; }
+    body > .wrap > main > section:not(#resultArea) { display: none !important; }
+    /* Expand result lists */
+    #rowsOpt, #rowsReal, #rowsPes { max-height: none !important; overflow: visible !important; }
+    .row { break-inside: avoid; page-break-inside: avoid; }
+    .badge { color: #333 !important; background: #f5f5f5 !important; border-color: #ccc !important; }
+  }
 </style>
 </head>
 <body>
@@ -336,6 +353,7 @@ export async function GET(req: NextRequest) {
         <div class="full" style="display:flex; gap: 8px; flex-wrap: wrap; align-items:center;">
           <button class="btn" type="submit" id="calcBtn">مشاهده تخمین رشته قبولی</button>
           <button class="btn secondary" type="button" id="saveBtn">💾 ذخیره این صفحه به صورت HTML</button>
+          <button class="btn secondary" type="button" id="printBtn">🖨️ چاپ / PDF</button>
           <span class="muted" style="font-size: 12px;">همه‌چیز آفلاین در همین فایل کار می‌کند.</span>
         </div>
         <div class="full"><div id="errBox" class="error" style="display:none"></div></div>
@@ -344,6 +362,26 @@ export async function GET(req: NextRequest) {
 
     <section id="resultArea" style="display:none">
       <div class="summary" id="summaryBox"></div>
+
+      <div class="card" style="margin-bottom: 16px; padding: 14px;">
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+          <div style="position:relative; flex:1; min-width:180px;">
+            <span style="position:absolute; right:10px; top:50%; transform:translateY(-50%); color: var(--muted); pointer-events:none;">🔍</span>
+            <input id="searchInput" type="search" placeholder="جستجوی رشته، دانشگاه یا شهر..." aria-label="جستجوی رشته، دانشگاه یا شهر" style="width:100%; background:rgba(255,255,255,.04); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:10px 32px 10px 14px; font:inherit; outline:none;" />
+          </div>
+          <select id="sortSel" aria-label="مرتب‌سازی نتایج" style="background:rgba(255,255,255,.04); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:10px 14px; font:inherit; outline:none; cursor:pointer;">
+            <option value="chance">بیشترین شانس قبولی</option>
+            <option value="cutoff-asc">سخت‌ترین ورود (رتبه کمتر)</option>
+            <option value="cutoff-desc">آسان‌ترین ورود (رتبه بیشتر)</option>
+            <option value="major">نام رشته (الفبا)</option>
+            <option value="university">نام دانشگاه (الفبا)</option>
+          </select>
+          <select id="uniTypeSel" aria-label="فیلتر نوع دانشگاه" style="background:rgba(255,255,255,.04); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:10px 14px; font:inherit; outline:none; cursor:pointer;">
+            <option value="">همه انواع دانشگاه</option>
+          </select>
+        </div>
+        <div id="filterInfo" style="margin-top:8px; font-size:12px; color:var(--muted); display:none;"></div>
+      </div>
 
       <div class="bucket optimistic" id="bOpt">
         <div class="head"><span>✅ انتخاب‌های خوش‌بینانه</span><span id="cOpt" class="muted"></span></div>
@@ -473,12 +511,63 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
       + '</div>';
   }
 
+  // Global state for filter/search/sort
+  var currentResult = null;
+  var filterState = { search: '', sortBy: 'chance', uniType: '' };
+
+  function applyFiltersAndSort(list) {
+    var q = filterState.search.trim().toLowerCase();
+    var filtered = list.filter(function (r) {
+      if (filterState.uniType && r.universityType !== filterState.uniType) return false;
+      if (q) {
+        var hay = (r.major + ' ' + r.university + ' ' + (r.city || '')).toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+    var sorted = filtered.slice();
+    switch (filterState.sortBy) {
+      case 'chance': sorted.sort(function (a, b) { return b.chance - a.chance; }); break;
+      case 'cutoff-asc': sorted.sort(function (a, b) { return a.cutoff - b.cutoff; }); break;
+      case 'cutoff-desc': sorted.sort(function (a, b) { return b.cutoff - a.cutoff; }); break;
+      case 'major': sorted.sort(function (a, b) { return a.major.localeCompare(b.major, 'fa'); }); break;
+      case 'university': sorted.sort(function (a, b) { return a.university.localeCompare(b.university, 'fa'); }); break;
+    }
+    return sorted;
+  }
+
   function render(result) {
+    currentResult = result;
     document.getElementById('resultArea').style.display = 'block';
     document.getElementById('summaryBox').innerHTML =
       '<div class="stat"><div class="v">' + faFmt(result.summary.reachableCount) + '</div><div class="l">تعداد انتخاب‌های در دسترس</div></div>'
       + '<div class="stat"><div class="v">' + (result.summary.medianRank ? faFmt(result.summary.medianRank) : '—') + '</div><div class="l">میانه رتبه قبولی</div></div>'
       + '<div class="stat"><div class="v">' + (result.summary.bestChance ? result.summary.bestChance.major : '—') + '</div><div class="l">بیشترین شانس</div></div>';
+
+    // Populate university type filter options (only types present in this result)
+    var uniTypeSel = document.getElementById('uniTypeSel');
+    var presentTypes = {};
+    var allRows = result.optimistic.concat(result.realistic, result.pessimistic);
+    allRows.forEach(function (r) { presentTypes[r.universityType] = true; });
+    // Clear existing options except the first "همه"
+    while (uniTypeSel.options.length > 1) uniTypeSel.remove(1);
+    Object.keys(presentTypes).forEach(function (t) {
+      var opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = uniLabel(t);
+      uniTypeSel.appendChild(opt);
+    });
+
+    reRender();
+  }
+
+  function reRender() {
+    if (!currentResult) return;
+    var allRows = currentResult.optimistic.concat(currentResult.realistic, currentResult.pessimistic);
+    var filtered = applyFiltersAndSort(allRows);
+    var opt = filtered.filter(function (r) { return r.bucket === 'optimistic'; });
+    var real = filtered.filter(function (r) { return r.bucket === 'realistic'; });
+    var pes = filtered.filter(function (r) { return r.bucket === 'pessimistic'; });
 
     function fill(id, list, countId) {
       var el = document.getElementById(id);
@@ -487,9 +576,30 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
       if (!list.length) { el.innerHTML = '<div class="empty">موردی در این دسته یافت نشد.</div>'; return; }
       el.innerHTML = list.map(rowHTML).join('');
     }
-    fill('rowsOpt', result.optimistic, 'cOpt');
-    fill('rowsReal', result.realistic, 'cReal');
-    fill('rowsPes', result.pessimistic, 'cPes');
+    fill('rowsOpt', opt, 'cOpt');
+    fill('rowsReal', real, 'cReal');
+    fill('rowsPes', pes, 'cPes');
+
+    // Update filter info text
+    var info = document.getElementById('filterInfo');
+    if (filterState.search || filterState.uniType) {
+      info.style.display = 'block';
+      info.innerHTML = 'نمایش <strong>' + fa(filtered.length) + '</strong> مورد از <strong>' + fa(allRows.length) + '</strong> رشته‌محل' +
+        ' <a href="#" id="clearFilters" style="color: #5eead4; text-decoration: none; margin-right: 8px;">↺ پاک کردن فیلتر</a>';
+      var clr = document.getElementById('clearFilters');
+      if (clr) {
+        clr.addEventListener('click', function (e) {
+          e.preventDefault();
+          filterState.search = '';
+          filterState.uniType = '';
+          document.getElementById('searchInput').value = '';
+          document.getElementById('uniTypeSel').value = '';
+          reRender();
+        });
+      }
+    } else {
+      info.style.display = 'none';
+    }
   }
 
   var form = document.getElementById('estForm');
@@ -510,6 +620,33 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
     document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
+  // Filter / search / sort listeners
+  document.getElementById('searchInput').addEventListener('input', function (e) {
+    filterState.search = e.target.value;
+    reRender();
+  });
+  document.getElementById('sortSel').addEventListener('change', function (e) {
+    filterState.sortBy = e.target.value;
+    reRender();
+  });
+  document.getElementById('uniTypeSel').addEventListener('change', function (e) {
+    filterState.uniType = e.target.value;
+    reRender();
+  });
+
+  // Keyboard shortcut: "/" focuses search (when not typing in another input)
+  document.addEventListener('keydown', function (e) {
+    var target = e.target;
+    var isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+    if (isTyping) return;
+    if (e.key === '/' && document.getElementById('resultArea').style.display !== 'none') {
+      e.preventDefault();
+      var inp = document.getElementById('searchInput');
+      inp.focus();
+      inp.select();
+    }
+  });
+
   function toast(msg) {
     var t = document.getElementById('toast');
     t.textContent = msg;
@@ -528,6 +665,10 @@ ${jsonSafe({ groups, quotas, uniTypes, dataset, preselect })}
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     toast('✔ نسخه HTML ذخیره شد');
+  });
+
+  document.getElementById('printBtn').addEventListener('click', function () {
+    window.print();
   });
 
   // preselect from query if provided

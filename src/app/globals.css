@@ -120,3 +120,78 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Print styles — for the "Print / Save PDF" button.
+   We hide chrome (header, footer, filter bar, form) and let only the
+   result summary + result list print cleanly on a white background. */
+@media print {
+  /* Force light theme colors for printing */
+  :root {
+    --background: oklch(1 0 0) !important;
+    --foreground: oklch(0.145 0 0) !important;
+    --card: oklch(1 0 0) !important;
+    --card-foreground: oklch(0.145 0 0) !important;
+    --border: oklch(0.922 0 0) !important;
+    --muted-foreground: oklch(0.4 0 0) !important;
+  }
+  html, body {
+    background: white !important;
+    color: black !important;
+  }
+  /* Hide decorative / interactive chrome */
+  .print\:hidden {
+    display: none !important;
+  }
+  /* Expand result list (no scroll limit) */
+  .max-h-\[640px\] {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  /* Avoid breaking inside a row */
+  .border-b {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Reset the colored backgrounds */
+  [class*="bg-gradient"], [class*="from-emerald"], [class*="from-amber"], [class*="from-rose"] {
+    background: white !important;
+  }
+  /* Hide background blobs */
+  .animate-pulse-slow, [class*="blur-3xl"] {
+    display: none !important;
+  }
+}
+
+/* Custom scrollbar styling (reused across the app) */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.custom-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+/* Range slider — bigger thumb for the chance filter */
+input[type="range"] {
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary, #10b981);
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary, #10b981);
+  cursor: pointer;
+  border: 2px solid white;
+}

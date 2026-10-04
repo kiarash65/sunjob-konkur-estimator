@@ -44,6 +44,12 @@ import {
   ChevronUp,
   Table as TableIcon,
   PieChart as PieIcon,
+  ArrowUpDown,
+  History,
+  Printer,
+  Keyboard,
+  Trash2,
+  Clock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -108,6 +114,8 @@ function faFmt(n: number | null | undefined): string {
 }
 
 const STORAGE_FAV_KEY = 'konkur-favorites'
+const STORAGE_HISTORY_KEY = 'konkur-history'
+const MAX_HISTORY = 8
 
 type FavItem = {
   key: string
@@ -144,6 +152,35 @@ function saveFavs(items: FavItem[]) {
   } catch {}
 }
 
+type HistoryItem = {
+  id: string          // unique key: group:quota:rank
+  group: GroupKey
+  quota: QuotaKey
+  rank: number
+  totalChoices: number
+  reachableCount: number
+  bestChance: number
+  bestMajor: string
+  savedAt: number
+}
+
+function loadHistory(): HistoryItem[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(STORAGE_HISTORY_KEY)
+    return raw ? (JSON.parse(raw) as HistoryItem[]) : []
+  } catch {
+    return []
+  }
+}
+
+function saveHistory(items: HistoryItem[]) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(items))
+  } catch {}
+}
+
 const UNI_TYPES_LIST = Object.keys(UNIVERSITY_TYPE_LABEL) as UniversityType[]
 
 export default function Home() {
@@ -158,8 +195,11 @@ export default function Home() {
   const [shareToast, setShareToast] = useState('')
   const [favs, setFavs] = useState<FavItem[]>([])
   const [showFavs, setShowFavs] = useState(false)
+  const [history, setHistory] = useState<HistoryItem[]>([])
+  const [showHistory, setShowHistory] = useState(false)
   const [mounted, setMounted] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const submitEstimate = useCallback(
     async (g: GroupKey, q: QuotaKey, rank: number) => {
@@ -177,6 +217,25 @@ export default function Home() {
           setError(data.error || 'خطای ناشناخته رخ داد.')
         } else {
           setResult(data.result)
+          // Save to history (max MAX_HISTORY items, dedup by group:quota:rank)
+          const id = `${g}:${q}:${rank}`
+          setHistory((prev) => {
+            const filtered = prev.filter((h) => h.id !== id)
+            const item: HistoryItem = {
+              id,
+              group: g,
+              quota: q,
+              rank,
+              totalChoices: data.result!.totalChoices,
+              reachableCount: data.result!.summary.reachableCount,
+              bestChance: data.result!.summary.bestChance?.chance ?? 0,
+              bestMajor: data.result!.summary.bestChance?.major ?? '—',
+              savedAt: Date.now(),
+            }
+            const next = [item, ...filtered].slice(0, MAX_HISTORY)
+            saveHistory(next)
+            return next
+          })
           setTimeout(() => {
             resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
           }, 100)
@@ -194,6 +253,7 @@ export default function Home() {
   useEffect(() => {
     setMounted(true)
     setFavs(loadFavs())
+    setHistory(loadHistory())
     try {
       const params = new URLSearchParams(window.location.search)
       const g = params.get('g') as GroupKey | null
@@ -209,6 +269,33 @@ export default function Home() {
       }
     } catch {}
   }, [submitEstimate])
+
+  // Keyboard shortcuts: "/" focuses search, "Esc" clears search
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      // Only when not typing in an input/textarea
+      const target = e.target as HTMLElement
+      const isTyping =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        target.getAttribute('role') === 'combobox'
+      if (isTyping) {
+        if (e.key === 'Escape' && searchInputRef.current) {
+          searchInputRef.current.focus()
+          searchInputRef.current.select()
+        }
+        return
+      }
+      if (e.key === '/' && searchInputRef.current) {
+        e.preventDefault()
+        searchInputRef.current.focus()
+        searchInputRef.current.select()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   // Sync form state to URL (no history spam — replace current entry).
   // Only update URL AFTER user interaction to avoid overwriting URL params that
@@ -322,6 +409,35 @@ export default function Home() {
     saveFavs([])
   }, [])
 
+  const removeHistory = useCallback((id: string) => {
+    setHistory((prev) => {
+      const next = prev.filter((h) => h.id !== id)
+      saveHistory(next)
+      return next
+    })
+  }, [])
+
+  const clearHistory = useCallback(() => {
+    setHistory([])
+    saveHistory([])
+  }, [])
+
+  const replayHistory = useCallback(
+    (h: HistoryItem) => {
+      setGroup(h.group)
+      setQuota(h.quota)
+      setRankInput(String(h.rank))
+      setUserTouched(true)
+      setShowHistory(false)
+      setTimeout(() => submitEstimate(h.group, h.quota, h.rank), 50)
+    },
+    [submitEstimate]
+  )
+
+  const onPrint = useCallback(() => {
+    window.print()
+  }, [])
+
   const isDark = theme === 'dark'
 
   return (
@@ -342,7 +458,7 @@ export default function Home() {
       `}</style>
 
       {/* Sticky header */}
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50">
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 print:hidden">
         <div className="container mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-4">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -379,6 +495,21 @@ export default function Home() {
               {mounted && favs.length > 0 && (
                 <span className="absolute -top-1 -left-1 min-w-4 h-4 px-1 text-[10px] font-bold bg-rose-500 text-white rounded-full flex items-center justify-center">
                   {fa(favs.length)}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHistory((v) => !v)}
+              className="relative"
+              aria-label="تاریخچه جستجوها"
+            >
+              <History className="w-4 h-4" />
+              <span className="hidden md:inline me-1">تاریخچه</span>
+              {mounted && history.length > 0 && (
+                <span className="absolute -top-1 -left-1 min-w-4 h-4 px-1 text-[10px] font-bold bg-emerald-500 text-white rounded-full flex items-center justify-center">
+                  {fa(history.length)}
                 </span>
               )}
             </Button>
@@ -438,10 +569,21 @@ export default function Home() {
       </section>
 
       <main className="container mx-auto max-w-6xl px-4 pb-24 flex-1">
+        {/* Print-only header — shows the form context in printed/PDF output */}
+        <div className="hidden print:block mb-4 pb-4 border-b-2 border-black">
+          <h1 className="text-2xl font-bold">تخمین رشته قبولی با رتبه کنکور ۱۴۰۵</h1>
+          <p className="text-sm mt-1">
+            گروه: <strong>{GROUPS.find((g) => g.key === group)?.label ?? group}</strong> — سهمیه:{' '}
+            <strong>{QUOTAS.find((q) => q.key === quota)?.label ?? quota}</strong> — رتبه:{' '}
+            <strong>{faFmt(parseInt(rankInput || '0', 10) || 0)}</strong>
+          </p>
+          <p className="text-xs mt-1 text-gray-600">تاریخ گزارش: {new Date().toLocaleDateString('fa-IR')}</p>
+        </div>
+
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Form */}
           <div className="lg:col-span-2">
-            <Card className="lg:sticky lg:top-24 border-border/60 shadow-xl shadow-emerald-500/5 backdrop-blur-sm bg-card/95">
+            <Card className="lg:sticky lg:top-24 border-border/60 shadow-xl shadow-emerald-500/5 backdrop-blur-sm bg-card/95 print:hidden">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calculator className="w-5 h-5 text-emerald-500" />
@@ -619,6 +761,8 @@ export default function Home() {
                     quota={quota}
                     onToggleFav={toggleFav}
                     isFav={isFav}
+                    searchInputRef={searchInputRef}
+                    onPrint={onPrint}
                   />
                 </motion.div>
               )}
@@ -640,8 +784,28 @@ export default function Home() {
           )}
         </AnimatePresence>
 
+        {/* History panel */}
+        <AnimatePresence>
+          {showHistory && (
+            <motion.section
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-6 overflow-hidden"
+            >
+              <HistoryPanel
+                history={history}
+                onReplay={replayHistory}
+                onRemove={removeHistory}
+                onClear={clearHistory}
+                onClose={() => setShowHistory(false)}
+              />
+            </motion.section>
+          )}
+        </AnimatePresence>
+
         {/* Info & FAQ */}
-        <section className="mt-12 grid md:grid-cols-3 gap-4">
+        <section className="mt-12 grid md:grid-cols-3 gap-4 print:hidden">
           <Card className="border-border/60 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 transition-all">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -683,7 +847,7 @@ export default function Home() {
           </Card>
         </section>
 
-        <section className="mt-6">
+        <section className="mt-6 print:hidden">
           <Card className="border-border/60">
             <CardHeader>
               <CardTitle className="text-base">سوالات متداول</CardTitle>
@@ -806,12 +970,16 @@ function ResultView({
   quota,
   onToggleFav,
   isFav,
+  searchInputRef,
+  onPrint,
 }: {
   result: EstimateResult
   group: GroupKey
   quota: QuotaKey
   onToggleFav: (row: EstimatedRow, g: GroupKey, q: QuotaKey, rank: number) => void
   isFav: (key: string) => boolean
+  searchInputRef: React.RefObject<HTMLInputElement | null>
+  onPrint: () => void
 }) {
   const groupInfo = GROUPS.find((g) => g.key === group) ?? GROUPS[0]
   const quotaInfo = QUOTAS.find((q) => q.key === quota) ?? QUOTAS[0]
@@ -822,6 +990,7 @@ function ResultView({
   const [uniTypeFilter, setUniTypeFilter] = useState<Set<UniversityType>>(new Set())
   const [minChance, setMinChance] = useState(0)
   const [view, setView] = useState<'tabs' | 'all' | 'chart'>('tabs')
+  const [sortBy, setSortBy] = useState<'chance' | 'cutoff-asc' | 'cutoff-desc' | 'major' | 'university'>('chance')
 
   // Combined filtered list
   const allRows = useMemo(() => {
@@ -830,7 +999,7 @@ function ResultView({
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return allRows.filter((r) => {
+    const filtered = allRows.filter((r) => {
       if (uniTypeFilter.size > 0 && !uniTypeFilter.has(r.universityType)) return false
       if (r.chance < minChance) return false
       if (q) {
@@ -839,7 +1008,27 @@ function ResultView({
       }
       return true
     })
-  }, [allRows, search, uniTypeFilter, minChance])
+    // Apply sort
+    const sorted = [...filtered]
+    switch (sortBy) {
+      case 'chance':
+        sorted.sort((a, b) => b.chance - a.chance)
+        break
+      case 'cutoff-asc':
+        sorted.sort((a, b) => a.cutoff - b.cutoff) // smaller cutoff = harder to get in
+        break
+      case 'cutoff-desc':
+        sorted.sort((a, b) => b.cutoff - a.cutoff)
+        break
+      case 'major':
+        sorted.sort((a, b) => a.major.localeCompare(b.major, 'fa'))
+        break
+      case 'university':
+        sorted.sort((a, b) => a.university.localeCompare(b.university, 'fa'))
+        break
+    }
+    return sorted
+  }, [allRows, search, uniTypeFilter, minChance, sortBy])
 
   const bucketCount = (rows: EstimatedRow[], bucket: 'optimistic' | 'realistic' | 'pessimistic') =>
     rows.filter((r) => r.bucket === bucket).length
@@ -934,22 +1123,33 @@ function ResultView({
       </Card>
 
       {/* Filter bar */}
-      <Card className="border-border/60">
+      <Card className="border-border/60 print:hidden">
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
+                ref={searchInputRef}
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="جستجوی رشته، دانشگاه یا شهر..."
-                className="pr-9 h-9"
+                aria-label="جستجوی رشته، دانشگاه یا شهر"
+                className="pr-9 pl-9 h-9"
               />
+              {!search && (
+                <kbd
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-muted-foreground border border-border/60 rounded px-1.5 py-0.5 pointer-events-none select-none bg-background/40"
+                  aria-hidden="true"
+                >
+                  /
+                </kbd>
+              )}
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch('')}
+                  aria-label="پاک کردن جستجو"
                   className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
                 >
                   <X className="w-4 h-4" />
@@ -958,9 +1158,9 @@ function ResultView({
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
+                <Button variant="outline" size="sm" className="h-9" aria-label="فیلتر بر اساس نوع دانشگاه">
                   <Filter className="w-4 h-4" />
-                  نوع دانشگاه
+                  <span className="hidden sm:inline">نوع دانشگاه</span>
                   {uniTypeFilter.size > 0 && (
                     <Badge variant="secondary" className="me-1 ms-1 text-[10px] px-1.5 py-0">
                       {fa(uniTypeFilter.size)}
@@ -1005,6 +1205,8 @@ function ResultView({
                 step={1}
                 value={minChance}
                 onChange={(e) => setMinChance(Number(e.target.value))}
+                aria-label="حداقل درصد شانس قبولی"
+                aria-valuetext={`حداقل شانس: ${fa(minChance)} درصد`}
                 className="w-20 accent-emerald-500"
               />
               <span className="text-xs font-mono font-bold w-7 text-center text-emerald-500">
@@ -1012,7 +1214,35 @@ function ResultView({
               </span>
             </div>
 
-            <div className="flex items-center gap-1 ms-auto">
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger
+                aria-label="مرتب‌سازی نتایج"
+                className="h-9 w-[140px] sm:w-[160px] text-xs"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground ms-1" />
+                <SelectValue placeholder="مرتب‌سازی" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="chance">بیشترین شانس قبولی</SelectItem>
+                <SelectItem value="cutoff-asc">سخت‌ترین ورود (رتبه کمتر)</SelectItem>
+                <SelectItem value="cutoff-desc">آسان‌ترین ورود (رتبه بیشتر)</SelectItem>
+                <SelectItem value="major">نام رشته (الفبا)</SelectItem>
+                <SelectItem value="university">نام دانشگاه (الفبا)</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onPrint}
+              className="h-9 px-2"
+              aria-label="چاپ / ذخیره PDF"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden lg:inline ms-1">چاپ</span>
+            </Button>
+
+            <div className="flex items-center gap-1 ms-auto print:hidden">
               <Button
                 variant={view === 'tabs' ? 'default' : 'outline'}
                 size="sm"
@@ -1514,9 +1744,112 @@ function FavsPanel({
   )
 }
 
+function HistoryPanel({
+  history,
+  onReplay,
+  onRemove,
+  onClear,
+  onClose,
+}: {
+  history: HistoryItem[]
+  onReplay: (h: HistoryItem) => void
+  onRemove: (id: string) => void
+  onClear: () => void
+  onClose: () => void
+}) {
+  // Already stored newest-first; no extra sort needed
+  return (
+    <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-emerald-500" />
+            </div>
+            <div>
+              <CardTitle className="text-base">تاریخچه جستجوها ({fa(history.length)})</CardTitle>
+              <CardDescription className="text-xs">
+                آخرین {fa(MAX_HISTORY)} تخمین در این مرورگر
+              </CardDescription>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {history.length > 0 && (
+              <Button variant="outline" size="sm" onClick={onClear}>
+                <Trash2 className="w-3.5 h-3.5" /> پاک کردن همه
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="w-4 h-4" /> بستن
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {history.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-8 text-center">
+            هنوز تخمینی ساخته نشده. بعد از ارسال فرم، نتیجه به‌صورت خودکار در اینجا ذخیره می‌شود.
+          </p>
+        ) : (
+          <div className="max-h-96 overflow-y-auto custom-scroll -mx-2 px-2 space-y-2">
+            {history.map((h) => {
+              const g = GROUPS.find((x) => x.key === h.group)
+              const q = QUOTAS.find((x) => x.key === h.quota)
+              return (
+                <div
+                  key={h.id}
+                  className="p-3 rounded-lg border border-border/60 bg-background/50 hover:bg-background/80 transition-colors group"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onReplay(h)}
+                      className="flex-1 min-w-0 text-right"
+                      aria-label="باز اجرای این تخمین"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-base">{g?.emoji}</span>
+                        <p className="font-bold text-sm leading-6 flex-1 truncate group-hover:text-emerald-500 transition-colors">
+                          {g?.label} — {q?.label}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mb-1">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          رتبه: <span className="font-mono">{faFmt(h.rank)}</span>
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {faFmt(h.totalChoices)} رشته‌محل
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-emerald-500 border-emerald-500/30">
+                          {faFmt(h.reachableCount)} انتخاب در دسترس
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        بهترین: {h.bestMajor} — <span className="font-mono">{fa(h.bestChance)}٪</span>
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(h.id)}
+                      aria-label="حذف این مورد از تاریخچه"
+                      className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 function Footer() {
   return (
-    <footer className="mt-auto border-t border-border/60 bg-background/80">
+    <footer className="mt-auto border-t border-border/60 bg-background/80 print:hidden">
       <div className="container mx-auto max-w-6xl px-4 py-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-center md:text-right">

@@ -167,3 +167,88 @@ Stage Summary:
 - Styling improvements include animated background, glassmorphism, spring/stagger animations, hover micro-interactions, per-row entrance animations.
 - All features verified end-to-end with agent-browser on multiple groups and edge cases.
 - ESLint clean; dev server stable; no runtime errors.
+
+---
+Task ID: 3
+Agent: cron-review (webDevReview)
+Task: QA pass + new features (sorting, history, print, keyboard shortcuts) + port features to downloadable HTML
+
+## Current project status description/assessment
+The project was already feature-complete after Task 2 (Persian RTL Next.js app with rank estimation, downloadable HTML, filter/search, favorites, shareable URL, chart view, theme toggle, ARIA labels partially missing). Dev server running and ESLint clean. The recommended next-phase work items from Task 2 were:
+- Accessibility: ARIA labels missing on chance slider, search input, university filter button.
+- Mobile: filter bar wraps to multiple lines on narrow screens.
+- Downloadable HTML lacked the new filter/search/favorites/chart features.
+
+## QA findings (via agent-browser + curl)
+- Main page `/` and deep-link `?g=&q=&r=&auto=1` work for all 5 groups.
+- /api/download-html returns a self-contained HTML file (65–73KB) that runs offline.
+- API edge cases handled (rank=0, rank="", rank=5B → all return 400 with proper error).
+- Mobile viewport (375px) — no horizontal scroll; filter bar wraps to 168px tall (acceptable).
+- Accessibility gaps confirmed: search input, chance slider, university filter button, sort selector — all missing aria-label.
+
+## Bugs fixed
+1. **Missing ARIA labels** — added `aria-label` to:
+   - Search input (`جستجوی رشته، دانشگاه یا شهر`)
+   - Chance range slider (`حداقل درصد شانس قبولی`) + `aria-valuetext` for screen readers
+   - University filter dropdown button (`فیلتر بر اساس نوع دانشگاه`)
+   - Sort dropdown (`مرتب‌سازی نتایج`)
+   - Print button (`چاپ / ذخیره PDF`)
+   - "Clear search" button (`پاک کردن جستجو`)
+2. **No keyboard shortcuts** — added `/` to focus the search input (skipped when typing in another input/select). Visual hint shown as a `<kbd>` element in the search input when empty.
+
+## New features added
+1. **Result sorting** — sort dropdown with 5 options:
+   - بیشترین شانس قبولی (default — highest chance first)
+   - سخت‌ترین ورود (رتبه کمتر) — sort by cutoff ascending (lowest cutoff = hardest)
+   - آسان‌ترین ورود (رتبه بیشتر) — sort by cutoff descending
+   - نام رشته (الفبا) — sort by major name (Persian locale)
+   - نام دانشگاه (الفبا) — sort by university name (Persian locale)
+   Sort applies to all 3 buckets in tabs view, all list view, and respects active filters.
+2. **Search history with localStorage** — every successful estimate is saved (deduped by group:quota:rank, max 8 items). Header has a "تاریخچه" button with count badge that opens a HistoryPanel:
+   - Each entry shows group emoji + label, quota, rank, total choices, reachable count, best major + chance
+   - Click an entry to replay that estimate (auto-fills form + resubmits)
+   - Per-entry remove button + "پاک کردن همه" button
+   - Persisted in `localStorage` under key `konkur-history`
+3. **Print/PDF export** — print button in filter bar calls `window.print()`. Print-only header shows group/quota/rank + Persian date. Print styles in globals.css force light theme, hide chrome (header, footer, form, filter bar, info cards, FAQ), expand result lists to full height, and avoid breaking rows across pages.
+4. **Keyboard shortcut `/`** — focuses the search input when not already typing in another input/select/textarea. Visual `<kbd>` hint shown in the search input when empty.
+
+## Features ported to downloadable HTML (`/api/download-html`)
+The standalone offline HTML file now has feature parity with the main page's filter/sort/print:
+1. **Search input** — text search across major/university/city
+2. **Sort dropdown** — same 5 sort options
+3. **University type filter** — dropdown populated dynamically with only the types present in the current result
+4. **Filter info bar** — shows "نمایش X مورد از Y رشته‌محل" with a "پاک کردن فیلتر" link
+5. **Print button** — `🖨️ چاپ / PDF` button calls `window.print()`
+6. **Print CSS** — hides form, save/print buttons, FAQ, info cards, footer; forces white background with black text; expands result lists
+7. **Keyboard shortcut `/`** — focuses search input
+
+## Styling improvements
+1. **Custom scrollbar** — moved from inline `<style>` per-component to global `.custom-scroll` class in globals.css (8px thumb, var(--border) color, hover to var(--muted-foreground))
+2. **Range slider thumb** — bigger 16px thumb with white border and shadow, accent-emerald-500 fill
+3. **Print-only header** — only visible when printing; shows report title, group/quota/rank summary, and Persian date
+4. **`print:hidden` utility** — applied to header, footer, form card, filter bar, info cards, FAQ section so only the result summary + result list print
+
+## Verification (final)
+- agent-browser tests pass for riazi/tajrobi/ensani/honar with deep-link — Select dropdowns show correct hydrated value, tab counts match API, no runtime errors.
+- Result sorting verified: changing sort to "cutoff-desc" puts مهندسی عمران (cutoff 65,000) first in optimistic tab; "cutoff-asc" puts مهندسی برق (cutoff 2,800) first.
+- Search history: 2 successful submits → history has 2 entries, persisted across reload.
+- Print button triggers `window.print()` (mocked for test).
+- Keyboard shortcut `/` focuses search input (verified `isFocused: true` after pressing `/`).
+- Accessibility: all interactive elements now have aria-label.
+- Downloadable HTML: search "مهندسی برق" → narrows 60 to 12 results; sort cutoff-desc puts non-profit university first (cutoff 35,000); university type filter "دولتی" → 10 results; clear filter button restores all 60.
+- ESLint passes with zero errors/warnings.
+- No runtime errors in /home/z/my-project/dev.log.
+
+## Unresolved issues or risks, and priority recommendations for the next phase
+- **Chart view not in downloadable HTML** — the offline file is still missing the recharts-based chart view. Adding it would require either bundling a chart library into the HTML or hand-rolling SVG charts in vanilla JS.
+- **Favorites not in downloadable HTML** — the offline file doesn't have a favorites feature. Could add localStorage-based favorites mirroring the main app's `konkur-favorites` key for cross-file sharing.
+- **Sort dropdown SSR quirk** — same Radix Select SSR issue as the form Select; currently mitigated with the `key={mounted}` remount trick. A mounted-only subtree would be a permanent fix but hurts first paint.
+- **Mobile filter bar** — wraps to 3+ lines on narrow screens; could collapse into a bottom-sheet drawer (using shadcn's Sheet component) on small viewports.
+- **Real Sanjesh data** — current dataset uses estimated cutoffs. Real past-year admission data should be ingested for production use.
+
+Stage Summary:
+- QA pass complete: all accessibility gaps fixed (6 ARIA labels added), keyboard shortcut added.
+- Five new feature groups added to the main app: result sorting (5 options), search history with replay, print/PDF export, keyboard shortcuts, sort dropdown with kbd hint.
+- All new features (filter/search/sort/print/keyboard shortcut) ported to the downloadable HTML file — now feature-parity with the main app's filtering/sorting/printing.
+- Styling: custom scrollbar, range slider thumb, print-only header, print:hidden utility applied throughout.
+- ESLint clean; dev server stable; no runtime errors.
