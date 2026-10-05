@@ -523,13 +523,13 @@ export default function Home() {
           >
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-teal-500 rounded-xl blur-md opacity-60 animate-pulse" />
-              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-teal-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
-                <GraduationCap className="w-6 h-6 text-white" />
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-teal-500 flex items-center justify-center shadow-lg shadow-violet-500/30 overflow-hidden">
+                <img src="/sunjob-logo.png" alt="سان‌جاب" className="w-7 h-7 object-contain" />
               </div>
             </div>
             <div className="leading-tight">
-              <p className="font-extrabold text-base sm:text-lg">تخمین رشته قبولی با رتبه</p>
-              <p className="text-xs text-muted-foreground">کنکور سراسری ۱۴۰۵ — نسخه قابل دانلود</p>
+              <p className="font-extrabold text-base sm:text-lg">سان‌جاب</p>
+              <p className="text-xs text-muted-foreground">انتخاب رشته کنکور ۱۴۰۵</p>
             </div>
           </motion.div>
           <div className="flex items-center gap-1.5">
