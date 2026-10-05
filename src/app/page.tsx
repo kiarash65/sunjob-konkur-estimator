@@ -529,7 +529,7 @@ export default function Home() {
             </div>
             <div className="leading-tight">
               <p className="font-extrabold text-base sm:text-lg">سان‌جاب</p>
-              <p className="text-xs text-muted-foreground">انتخاب رشته کنکور ۱۴۰۵</p>
+              <p className="text-xs text-muted-foreground">کشف، تجربه، انتخاب</p>
             </div>
           </motion.div>
           <div className="flex items-center gap-1.5">
@@ -563,7 +563,7 @@ export default function Home() {
               <History className="w-4 h-4" />
               <span className="hidden md:inline me-1">تاریخچه</span>
               {mounted && history.length > 0 && (
-                <span className="absolute -top-1 -left-1 min-w-4 h-4 px-1 text-[10px] font-bold bg-emerald-500 text-white rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -left-1 min-w-4 h-4 px-1 text-[10px] font-bold bg-teal-500 text-white rounded-full flex items-center justify-center">
                   {fa(history.length)}
                 </span>
               )}
@@ -607,7 +607,7 @@ export default function Home() {
                 >
                   <Sun className="w-4 h-4" />
                   <span className="flex-1">روشن</span>
-                  {mounted && theme === 'light' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                  {mounted && theme === 'light' && <CheckCircle2 className="w-3 h-3 text-teal-500" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setTheme('dark')}
@@ -615,7 +615,7 @@ export default function Home() {
                 >
                   <Moon className="w-4 h-4" />
                   <span className="flex-1">تاریک</span>
-                  {mounted && theme === 'dark' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                  {mounted && theme === 'dark' && <CheckCircle2 className="w-3 h-3 text-teal-500" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setTheme('system')}
@@ -623,7 +623,7 @@ export default function Home() {
                 >
                   <Monitor className="w-4 h-4" />
                   <span className="flex-1">سیستم</span>
-                  {mounted && theme === 'system' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                  {mounted && theme === 'system' && <CheckCircle2 className="w-3 h-3 text-teal-500" />}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -703,14 +703,14 @@ export default function Home() {
               variant="outline"
               className="mb-3 border-teal-500/40 text-teal-600 dark:text-teal-400 bg-teal-500/10"
             >
-              <Sparkles className="w-3.5 h-3.5 me-1.5" /> نرم افزار رایگان تخمین رشته قبولی
+              <Sparkles className="w-3.5 h-3.5 me-1.5" /> اختصاصی سان‌جاب
             </Badge>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-teal-500 via-cyan-500 to-violet-500 bg-clip-text text-transparent leading-tight">
-              تخمین رشته قبولی با رتبه کنکور ۱۴۰۵
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-teal-500 via-cyan-500 to-teal-400 bg-clip-text text-transparent leading-tight">
+              آینده‌ات ارزش یک تصمیم آگاهانه را دارد
             </h1>
             <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-3xl mx-auto leading-8">
-              گروه آزمایشی، سهمیه و رتبه خود را وارد کنید تا فهرستی از رشته‌محل‌های پیشنهادی را در سه دسته{' '}
-              <span className="text-emerald-500 font-semibold">خوش‌بینانه</span>،{' '}
+              انتخاب رشته یکی از مهم‌ترین تصمیم‌های مسیر زندگی است. در سان‌جاب، گروه آزمایشی، سهمیه و رتبه خود را وارد کنید تا فهرستی از رشته‌محل‌های پیشنهادی را در سه دسته{' '}
+              <span className="text-teal-500 font-semibold">خوش‌بینانه</span>،{' '}
               <span className="text-amber-500 font-semibold">منطقی</span> و{' '}
               <span className="text-rose-500 font-semibold">بدبینانه</span> مشاهده کنید.
               داده‌ها بر اساس کارنامه قبولی سال گذشته و با خطای تخمینی کمتر از ۵٪ تنظیم شده‌اند.
@@ -724,7 +724,7 @@ export default function Home() {
         <>
         {/* Print-only header — shows the form context in printed/PDF output */}
         <div className="hidden print:block mb-4 pb-4 border-b-2 border-black">
-          <h1 className="text-2xl font-bold">تخمین رشته قبولی با رتبه کنکور ۱۴۰۵</h1>
+          <h1 className="text-2xl font-bold">سان‌جاب — انتخاب رشته کنکور ۱۴۰۵</h1>
           <p className="text-sm mt-1">
             گروه: <strong>{GROUPS.find((g) => g.key === group)?.label ?? group}</strong> — سهمیه:{' '}
             <strong>{QUOTAS.find((q) => q.key === quota)?.label ?? quota}</strong> — رتبه:{' '}
@@ -736,10 +736,10 @@ export default function Home() {
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Form */}
           <div className="lg:col-span-2">
-            <Card className="lg:sticky lg:top-24 border-border/60 shadow-xl shadow-emerald-500/5 backdrop-blur-sm bg-card/95 print:hidden">
+            <Card className="lg:sticky lg:top-24 border-border/60 shadow-xl shadow-teal-500/5 backdrop-blur-sm bg-card/95 print:hidden">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Calculator className="w-5 h-5 text-emerald-500" />
+                  <Calculator className="w-5 h-5 text-teal-500" />
                   مشخصات داوطلب
                 </CardTitle>
                 <CardDescription>
@@ -876,7 +876,7 @@ export default function Home() {
                     <motion.div
                       initial={{ opacity: 0, y: -5 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-sm bg-emerald-500/10 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded-lg px-3 py-2"
+                      className="text-sm bg-teal-500/10 border border-teal-500/40 text-teal-600 dark:text-teal-400 rounded-lg px-3 py-2"
                     >
                       {shareToast}
                     </motion.div>
@@ -968,9 +968,9 @@ export default function Home() {
 
         {/* Quick Access */}
         <section className="mt-12 grid md:grid-cols-3 gap-4 print:hidden">
-          <Card onClick={() => setActivePage('catalog')} className="border-border/60 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10 transition-all group cursor-pointer">
+          <Card onClick={() => setActivePage('catalog')} className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all group cursor-pointer">
             <CardHeader>
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-600 to-purple-500 flex items-center justify-center mb-2 transition-transform group-hover:scale-110">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center mb-2 transition-transform group-hover:scale-110">
                 <ListChecks className="w-6 h-6 text-white" />
               </div>
               <CardTitle className="text-base">فهرست رشته‌محل‌ها</CardTitle>
@@ -1014,10 +1014,10 @@ export default function Home() {
 
         {/* Guide */}
         <section className="mt-6 print:hidden">
-          <Card className="border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-card to-card overflow-hidden">
+          <Card className="border-teal-500/30 bg-gradient-to-br from-teal-500/5 via-card to-card overflow-hidden">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Lightbulb className="w-4 h-4 text-violet-500" />
+                <Lightbulb className="w-4 h-4 text-teal-500" />
                 راهنمای انتخاب رشته
               </CardTitle>
               <CardDescription>نکات کلیدی برای انتخاب رشته آگاهانه</CardDescription>
@@ -1026,7 +1026,7 @@ export default function Home() {
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-bold">
-                    <span className="w-6 h-6 rounded-full bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center text-xs">۱</span>
+                    <span className="w-6 h-6 rounded-full bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xs">۱</span>
                     <span>خودشناسی</span>
                   </div>
                   <p className="text-xs text-muted-foreground leading-6">
@@ -1058,10 +1058,10 @@ export default function Home() {
 
         {/* Info & FAQ */}
         <section className="mt-6 grid md:grid-cols-3 gap-4 print:hidden">
-          <Card className="border-border/60 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10 transition-all">
+          <Card className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <ListChecks className="w-4 h-4 text-violet-500" />
+                <ListChecks className="w-4 h-4 text-teal-500" />
                 ۵ گروه آزمایشی
               </CardTitle>
             </CardHeader>
@@ -1084,10 +1084,10 @@ export default function Home() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-border/60 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10 transition-all">
+          <Card className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <GraduationCap className="w-4 h-4 text-violet-500" />
+                <GraduationCap className="w-4 h-4 text-teal-500" />
                 ۶ نوع دانشگاه
               </CardTitle>
             </CardHeader>
@@ -1195,7 +1195,7 @@ export default function Home() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 id="shortcut-help-title" className="text-base font-bold flex items-center gap-2">
-                  <Keyboard className="w-4 h-4 text-emerald-500" />
+                  <Keyboard className="w-4 h-4 text-teal-500" />
                   میانبرهای صفحه‌کلید
                 </h3>
                 <Button variant="ghost" size="icon" aria-label="بستن" onClick={() => setShowShortcutHelp(false)}>
@@ -1253,9 +1253,9 @@ function EmptyState({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-          className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/15 to-teal-500/15 flex items-center justify-center mb-4"
+          className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500/15 to-teal-500/15 flex items-center justify-center mb-4"
         >
-          <Sparkles className="w-8 h-8 text-emerald-500" />
+          <Sparkles className="w-8 h-8 text-teal-500" />
         </motion.div>
         <h3 className="text-lg font-bold mb-2">هنوز تخمینی ساخته نشده</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto leading-7">
@@ -1269,17 +1269,17 @@ function EmptyState({
               key={ex.label}
               type="button"
               onClick={() => onQuickStart(ex.g, ex.q, ex.r)}
-              className="group flex items-center gap-2 p-3 rounded-lg border border-border/60 bg-background/50 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all text-right"
+              className="group flex items-center gap-2 p-3 rounded-lg border border-border/60 bg-background/50 hover:border-teal-500/40 hover:bg-teal-500/5 transition-all text-right"
               aria-label={`شروع سریع با ${ex.label}`}
             >
               <span className="text-xl shrink-0">{ex.emoji}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold leading-5 group-hover:text-emerald-500 transition-colors">
+                <p className="text-xs font-bold leading-5 group-hover:text-teal-500 transition-colors">
                   {ex.label}
                 </p>
                 <p className="text-[10px] text-muted-foreground">{ex.desc}</p>
               </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground rotate-90 group-hover:text-emerald-500 transition-all shrink-0" />
+              <ChevronDown className="w-4 h-4 text-muted-foreground rotate-90 group-hover:text-teal-500 transition-all shrink-0" />
             </button>
           ))}
         </div>
@@ -1558,7 +1558,7 @@ function ResultView({
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card overflow-hidden">
+      <Card className="border-teal-500/30 bg-gradient-to-br from-teal-500/5 via-card to-card overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
@@ -1591,7 +1591,7 @@ function ResultView({
               icon={<ListChecks className="w-4 h-4" />}
               value={result.summary.reachableCount > 0 ? <CountUp target={result.summary.reachableCount} /> : '—'}
               label="انتخاب در دسترس"
-              color="text-emerald-500"
+              color="text-teal-500"
               delay={0}
             />
             <Stat
@@ -1605,7 +1605,7 @@ function ResultView({
               icon={<Award className="w-4 h-4" />}
               value={best ? <><CountUp target={best.chance} />٪</> : '—'}
               label="بیشترین شانس"
-              color="text-violet-500"
+              color="text-teal-500"
               delay={0.1}
             />
           </div>
@@ -1773,9 +1773,9 @@ function ResultView({
                 onChange={(e) => setMinChance(Number(e.target.value))}
                 aria-label="حداقل درصد شانس قبولی"
                 aria-valuetext={`حداقل شانس: ${fa(minChance)} درصد`}
-                className="w-20 accent-emerald-500"
+                className="w-20 accent-teal-500"
               />
-              <span className="text-xs font-mono font-bold w-7 text-center text-emerald-500">
+              <span className="text-xs font-mono font-bold w-7 text-center text-teal-500">
                 {fa(minChance)}
               </span>
             </div>
@@ -1939,7 +1939,7 @@ function ResultView({
               </span>
               <button
                 onClick={resetFilters}
-                className="text-emerald-500 hover:text-emerald-400 inline-flex items-center gap-1"
+                className="text-teal-500 hover:text-teal-400 inline-flex items-center gap-1"
               >
                 <RotateCcw className="w-3 h-3" /> پاک کردن همه
               </button>
@@ -1983,7 +1983,7 @@ function ResultView({
                 value={minChance}
                 onChange={(e) => setMinChance(Number(e.target.value))}
                 aria-label="حداقل درصد شانس قبولی"
-                className="w-full accent-emerald-500"
+                className="w-full accent-teal-500"
               />
             </div>
             <div className="space-y-2">
@@ -1997,7 +1997,7 @@ function ResultView({
                     className={cn(
                       'text-xs px-3 py-2 rounded-md border transition-colors text-right',
                       uniTypeFilter.has(t)
-                        ? 'bg-emerald-500/15 border-emerald-500/50 text-foreground'
+                        ? 'bg-teal-500/15 border-teal-500/50 text-foreground'
                         : 'bg-background/50 border-border/60 text-muted-foreground'
                     )}
                   >
@@ -2060,7 +2060,7 @@ function ResultView({
       {view === 'tabs' && (
         <Tabs defaultValue="optimistic" className="w-full">
           <TabsList className="grid grid-cols-3 w-full h-auto">
-            <TabsTrigger value="optimistic" className="flex flex-col gap-1 py-2 data-[state=active]:text-emerald-500">
+            <TabsTrigger value="optimistic" className="flex flex-col gap-1 py-2 data-[state=active]:text-teal-500">
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" /> خوش‌بینانه
               </span>
@@ -2083,7 +2083,7 @@ function ResultView({
           <TabsContent value="optimistic" className="mt-3">
             <BucketList
               rows={filteredRows.filter((r) => r.bucket === 'optimistic')}
-              tone="emerald"
+              tone="teal"
               emptyText="موردی در دسته خوش‌بینانه یافت نشد."
               onToggleFav={(r) => onToggleFav(r, group, quota, result.rank)}
               isFav={(r) => isFav(rowKey(r, group, quota))}
@@ -2113,7 +2113,7 @@ function ResultView({
       {view === 'all' && (
         <BucketList
           rows={filteredRows}
-          tone="emerald"
+          tone="teal"
           emptyText="موردی با فیلتر فعلی یافت نشد."
           onToggleFav={(r) => onToggleFav(r, group, quota, result.rank)}
           isFav={(r) => isFav(rowKey(r, group, quota))}
@@ -2125,7 +2125,7 @@ function ResultView({
         <Card className="border-border/60">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <TableIcon className="w-4 h-4 text-emerald-500" />
+              <TableIcon className="w-4 h-4 text-teal-500" />
               تحلیل توزیع شانس قبولی
             </CardTitle>
             <CardDescription>
@@ -2292,7 +2292,7 @@ function CompareView({
     <Card className="border-border/60">
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <GitCompare className="w-4 h-4 text-emerald-500" />
+          <GitCompare className="w-4 h-4 text-teal-500" />
           مقایسه رتبه‌ها
         </CardTitle>
         <CardDescription>
@@ -2373,7 +2373,7 @@ function CompareView({
                   const isBetter = m.betterIsHigher ? diff > 0 : diff < 0
                   const isWorse = m.betterIsHigher ? diff < 0 : diff > 0
                   const diffColor = isBetter
-                    ? 'text-emerald-500'
+                    ? 'text-teal-500'
                     : isWorse
                       ? 'text-rose-500'
                       : 'text-muted-foreground'
@@ -2442,7 +2442,7 @@ function PriorityListView({
   const strategyMeta = {
     safe: {
       label: 'خوش‌بینانه (رویایی)',
-      tone: 'emerald',
+      tone: 'teal',
       desc: '۸ انتخاب رویایی با شانس پایین — امیدوارانه در ابتدای لیست',
       icon: <CheckCircle2 className="w-4 h-4" />,
     },
@@ -2462,11 +2462,11 @@ function PriorityListView({
 
   return (
     <div className="space-y-4">
-      <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card">
+      <Card className="border-teal-500/30 bg-gradient-to-br from-teal-500/5 via-card to-card">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-500 flex items-center justify-center shadow-lg shadow-teal-500/30">
                 <Wand2 className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -2484,8 +2484,8 @@ function PriorityListView({
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-            <Lightbulb className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-teal-500/5 border border-teal-500/20">
+            <Lightbulb className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground leading-6">
               این لیست بر اساس استراتژی استاندارد <strong className="text-foreground">۳ دسته ۸ تایی</strong> پیشنهاد می‌شود:
               ۸ انتخاب امن، ۸ انتخاب منطقی و ۸ انتخاب شانس. مجموعاً{' '}
@@ -2501,14 +2501,14 @@ function PriorityListView({
         const items = priorityList[strategy]
         if (items.length === 0) return null
         const toneClass =
-          meta.tone === 'emerald'
-            ? 'border-emerald-500/30 from-emerald-500/5'
+          meta.tone === 'teal'
+            ? 'border-teal-500/30 from-teal-500/5'
             : meta.tone === 'amber'
               ? 'border-amber-500/30 from-amber-500/5'
               : 'border-rose-500/30 from-rose-500/5'
         const textTone =
-          meta.tone === 'emerald'
-            ? 'text-emerald-500'
+          meta.tone === 'teal'
+            ? 'text-teal-500'
             : meta.tone === 'amber'
               ? 'text-amber-500'
               : 'text-rose-500'
@@ -2561,13 +2561,13 @@ function PriorityRow({
   item: PriorityList['items'][number]
   onToggleFav: (r: EstimatedRow) => void
   isFav: (r: EstimatedRow) => boolean
-  strategyTone: 'emerald' | 'amber' | 'rose'
+  strategyTone: 'teal' | 'amber' | 'rose'
 }) {
   const chanceColor =
-    item.chance >= 70 ? 'text-emerald-500' : item.chance >= 40 ? 'text-amber-500' : 'text-rose-500'
+    item.chance >= 70 ? 'text-teal-500' : item.chance >= 40 ? 'text-amber-500' : 'text-rose-500'
   const chanceBg =
-    strategyTone === 'emerald'
-      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+    strategyTone === 'teal'
+      ? 'bg-teal-500/10 border-teal-500/30 text-teal-500'
       : strategyTone === 'amber'
         ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
         : 'bg-rose-500/10 border-rose-500/30 text-rose-500'
@@ -2701,7 +2701,7 @@ function StatisticsCard({
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const tierColorMap = {
-    excellent: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
+    excellent: 'text-teal-500 bg-teal-500/10 border-teal-500/30',
     good: 'text-teal-500 bg-teal-500/10 border-teal-500/30',
     fair: 'text-amber-500 bg-amber-500/10 border-amber-500/30',
     challenging: 'text-orange-500 bg-orange-500/10 border-orange-500/30',
@@ -2714,7 +2714,7 @@ function StatisticsCard({
   const percentileForBar = stats.userPercentile
   const percentileColor =
     percentileForBar < 20
-      ? 'from-emerald-500 to-teal-400'
+      ? 'from-teal-500 to-cyan-400'
       : percentileForBar < 50
         ? 'from-teal-500 to-amber-400'
         : percentileForBar < 80
@@ -2732,12 +2732,12 @@ function StatisticsCard({
   ]
 
   return (
-    <Card className="border-border/60 bg-gradient-to-br from-violet-500/5 via-card to-card overflow-hidden">
+    <Card className="border-border/60 bg-gradient-to-br from-teal-500/5 via-card to-card overflow-hidden">
       <CardHeader className="pb-3 cursor-pointer select-none" onClick={() => setCollapsed((c) => !c)} role="button" tabIndex={0} aria-expanded={!collapsed} aria-controls="stats-card-body">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-violet-500/15 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-violet-500" />
+            <div className="w-9 h-9 rounded-lg bg-teal-500/15 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-teal-500" />
             </div>
             <div>
               <CardTitle className="text-base flex items-center gap-2">
@@ -2788,7 +2788,7 @@ function StatisticsCard({
             <span className="text-xs text-muted-foreground">
               جایگاه شما نسبت به سایر رشته‌محل‌ها
             </span>
-            <span className="text-sm font-bold text-violet-500 tabular-nums">
+            <span className="text-sm font-bold text-teal-500 tabular-nums">
               صدک: {fa(stats.userPercentile)}٪
             </span>
           </div>
@@ -2829,7 +2829,7 @@ function StatisticsCard({
 
         {/* Reach vs out-of-reach summary */}
         <div className="mt-3 flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-emerald-500 border-emerald-500/30">
+          <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-teal-500 border-teal-500/30">
             <CheckCircle2 className="w-3 h-3 ms-1" />
             {fa(stats.reachableCount)} رشته‌محل در دسترس
           </Badge>
@@ -2855,7 +2855,7 @@ function BucketList({
   showBucketBadge = false,
 }: {
   rows: EstimatedRow[]
-  tone: 'emerald' | 'amber' | 'rose'
+  tone: 'teal' | 'amber' | 'rose'
   emptyText: string
   onToggleFav: (r: EstimatedRow) => void
   isFav: (r: EstimatedRow) => boolean
@@ -2863,11 +2863,11 @@ function BucketList({
 }) {
   const [expandAll, setExpandAll] = useState<boolean | null>(null)
   const toneClasses =
-    tone === 'emerald'
-      ? 'from-emerald-500/15'
+    tone === 'teal'
+      ? 'from-teal-500/15'
       : tone === 'amber'
-        ? 'from-amber-500/15'
-        : 'from-rose-500/15'
+        ? 'from-orange-500/15'
+        : 'from-red-500/15'
   if (rows.length === 0) {
     return (
       <Card className="border-dashed border-2 border-border/60 bg-card/40">
@@ -2950,10 +2950,10 @@ function RowItem({
   }
   const chance = row.chance
   const chanceColor =
-    chance >= 70 ? 'text-emerald-500' : chance >= 40 ? 'text-amber-500' : 'text-rose-500'
+    chance >= 70 ? 'text-teal-500' : chance >= 40 ? 'text-amber-500' : 'text-rose-500'
   const chanceGradient =
     chance >= 70
-      ? 'from-emerald-500 to-teal-400'
+      ? 'from-teal-500 to-cyan-400'
       : chance >= 40
         ? 'from-amber-500 to-amber-400'
         : 'from-rose-500 to-rose-400'
@@ -2966,7 +2966,7 @@ function RowItem({
         : 'بدبینانه'
   const bucketTone =
     row.bucket === 'optimistic'
-      ? 'text-emerald-500 border-emerald-500/30'
+      ? 'text-teal-500 border-teal-500/30'
       : row.bucket === 'realistic'
         ? 'text-amber-500 border-amber-500/30'
         : 'text-rose-500 border-rose-500/30'
@@ -3035,7 +3035,7 @@ function RowItem({
               آخرین رتبه قبولی: <span className="font-mono me-0.5">{faFmt(row.cutoff)}</span>
             </Badge>
             {row.rankDistance > 0 && (
-              <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-emerald-500 border-emerald-500/30">
+              <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-teal-500 border-teal-500/30">
                 اختلاف شما با آخرین رتبه: {faFmt(Math.abs(row.rankDistance))} بهتر
               </Badge>
             )}
@@ -3109,7 +3109,7 @@ function RowItem({
               <div className="p-2 rounded-md bg-foreground/[0.03]">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px] text-muted-foreground">مقایسه با آخرین رتبه قبولی</span>
-                  <span className={cn('text-[11px] font-bold tabular-nums', rankRatio > 0 ? 'text-emerald-500' : rankRatio < 0 ? 'text-rose-500' : 'text-muted-foreground')}>
+                  <span className={cn('text-[11px] font-bold tabular-nums', rankRatio > 0 ? 'text-teal-500' : rankRatio < 0 ? 'text-rose-500' : 'text-muted-foreground')}>
                     {rankRatio > 0 ? '+' : ''}{fa(Math.round(Math.abs(rankRatio)))}٪
                   </span>
                 </div>
@@ -3120,7 +3120,7 @@ function RowItem({
                   <div
                     className={cn(
                       'absolute top-0 bottom-0 rounded-full',
-                      rankRatio > 0 ? 'bg-emerald-500' : 'bg-rose-500'
+                      rankRatio > 0 ? 'bg-teal-500' : 'bg-rose-500'
                     )}
                     style={{
                       // Bar fills from center towards right (better) or left (worse)
@@ -3229,7 +3229,7 @@ function FavsPanel({
                       className={cn(
                         'text-xl font-extrabold tabular-nums',
                         f.chance >= 70
-                          ? 'text-emerald-500'
+                          ? 'text-teal-500'
                           : f.chance >= 40
                             ? 'text-amber-500'
                             : 'text-rose-500'
@@ -3264,12 +3264,12 @@ function HistoryPanel({
 }) {
   // Already stored newest-first; no extra sort needed
   return (
-    <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card">
+    <Card className="border-teal-500/30 bg-gradient-to-br from-teal-500/5 via-card to-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-emerald-500" />
+            <div className="w-9 h-9 rounded-lg bg-teal-500/15 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-teal-500" />
             </div>
             <div>
               <CardTitle className="text-base">تاریخچه جستجوها ({fa(history.length)})</CardTitle>
@@ -3314,7 +3314,7 @@ function HistoryPanel({
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-base">{g?.emoji}</span>
-                        <p className="font-bold text-sm leading-6 flex-1 truncate group-hover:text-emerald-500 transition-colors">
+                        <p className="font-bold text-sm leading-6 flex-1 truncate group-hover:text-teal-500 transition-colors">
                           {g?.label} — {q?.label}
                         </p>
                       </div>
@@ -3325,7 +3325,7 @@ function HistoryPanel({
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                           {faFmt(h.totalChoices)} رشته‌محل
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-emerald-500 border-emerald-500/30">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-teal-500 border-teal-500/30">
                           {faFmt(h.reachableCount)} انتخاب در دسترس
                         </Badge>
                       </div>
@@ -3395,7 +3395,7 @@ function CatalogView() {
     'very-high': 'text-rose-500 bg-rose-500/10 border-rose-500/30',
     'high': 'text-orange-500 bg-orange-500/10 border-orange-500/30',
     'medium': 'text-amber-500 bg-amber-500/10 border-amber-500/30',
-    'low': 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
+    'low': 'text-teal-500 bg-teal-500/10 border-teal-500/30',
   }
 
   return (
@@ -3403,7 +3403,7 @@ function CatalogView() {
       {/* Stats bar */}
       <div className="grid grid-cols-3 gap-3">
         <div className="text-center p-3 rounded-lg border border-border/60 bg-card/50">
-          <div className="text-xl font-bold text-violet-500">{faFmt(allRows.length)}</div>
+          <div className="text-xl font-bold text-teal-500">{faFmt(allRows.length)}</div>
           <div className="text-[11px] text-muted-foreground">رشته‌محل</div>
         </div>
         <div className="text-center p-3 rounded-lg border border-border/60 bg-card/50">
@@ -3419,7 +3419,7 @@ function CatalogView() {
       <Card className="border-border/60">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <ListChecks className="w-4 h-4 text-violet-500" />
+            <ListChecks className="w-4 h-4 text-teal-500" />
             فهرست رشته‌محل‌ها
           </CardTitle>
           <CardDescription>
@@ -3542,7 +3542,7 @@ function CatalogView() {
                         <td className="text-center py-2 px-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); setExpandedRow(isExpanded ? null : rowIdx) }}
-                            className="text-[10px] text-violet-500 hover:text-violet-400"
+                            className="text-[10px] text-teal-500 hover:text-teal-400"
                             aria-label={isExpanded ? 'بستن جزئیات' : 'مشاهده جزئیات'}
                           >
                             {isExpanded ? '▲ بستن' : '▼ جزئیات'}
@@ -3739,7 +3739,7 @@ function UniversitiesView() {
 
           <div className="grid sm:grid-cols-2 gap-2">
             {filtered.map((u, i) => (
-              <div key={i} className="p-3 rounded-lg border border-border/60 bg-card/50 hover:border-violet-500/30 transition-colors">
+              <div key={i} className="p-3 rounded-lg border border-border/60 bg-card/50 hover:border-teal-500/30 transition-colors">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm leading-6">{u.name}</p>
@@ -3883,31 +3883,70 @@ function MajorsView() {
 
 function Footer() {
   return (
-    <footer className="mt-auto border-t border-border/60 bg-background/80 print:hidden">
-      <div className="container mx-auto max-w-6xl px-4 py-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-center md:text-right">
-            <p className="text-sm font-semibold mb-1">تخمین رشته قبولی با رتبه کنکور ۱۴۰۵</p>
-            <p className="text-xs text-muted-foreground leading-6">
-              نرم افزار رایگان بر اساس کارنامه سال گذشته — خطای تخمینی کمتر از ۵٪.
+    <footer className="mt-auto bg-[#1A2744] text-white overflow-hidden print:hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
+          {/* Brand */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-10 h-10 rounded-xl overflow-hidden">
+                <img src="/sunjob-logo.png" alt="سان‌جاب" className="w-full h-full object-cover" />
+              </div>
+              <span className="text-xl font-extrabold">سان‌جاب</span>
+            </div>
+            <p className="text-gray-400 text-sm leading-6 mb-4">
+              سان‌جاب، همراه تو در مسیر کشف خود و ساخت آینده‌ای روشن. ما باور داریم انتخاب رشته، انتخاب یک مسیر زندگی است.
             </p>
+            <a
+              href="https://t.me/Sunjob1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 w-9 h-9 rounded-lg bg-white/10 hover:bg-[#0EA5A0]/20 transition-colors justify-center"
+            >
+              <Share2 className="w-4 h-4" />
+            </a>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <a href="https://sunjob.ir" target="_blank" rel="noopener noreferrer">
-                <Share2 className="w-4 h-4 me-1.5" /> سان‌جاب
-              </a>
-            </Button>
-            <Button variant="ghost" size="sm">
-              <Github className="w-4 h-4 me-1.5" /> پروژه
-            </Button>
+          {/* Quick Access */}
+          <div>
+            <h4 className="text-sm font-bold mb-3 text-gray-300">دسترسی سریع</h4>
+            <ul className="space-y-2">
+              <li><a href="/" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">خانه</a></li>
+              <li><a href="/#philosophy" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">فلسفه ما</a></li>
+              <li><a href="https://t.me/Sunjob1" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">مشاوره انتخاب رشته</a></li>
+            </ul>
+          </div>
+          {/* Services */}
+          <div>
+            <h4 className="text-sm font-bold mb-3 text-gray-300">خدمات ما</h4>
+            <ul className="space-y-2">
+              <li><a href="/#tests" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">تست‌های خودشناسی</a></li>
+              <li><a href="/fields/riazi/" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">رشته‌های ریاضی</a></li>
+              <li><a href="/fields/tajrobi/" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">رشته‌های تجربی</a></li>
+              <li><a href="/fields/ensani/" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">رشته‌های انسانی</a></li>
+              <li><a href="/products/" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">پلن PRO انتخاب رشته</a></li>
+            </ul>
+          </div>
+          {/* Contact */}
+          <div>
+            <h4 className="text-sm font-bold mb-3 text-gray-300">ارتباط با ما</h4>
+            <ul className="space-y-2">
+              <li className="flex items-center gap-2 text-gray-400 text-sm">
+                <span className="text-[#9CA3AF]">تلگرام:</span>
+                <a href="https://t.me/Sunjob1" target="_blank" rel="noopener noreferrer" className="hover:text-[#0EA5A0] transition-colors">@Sunjob1</a>
+              </li>
+              <li className="flex items-center gap-2 text-gray-400 text-sm">
+                <span className="text-[#9CA3AF]">ایمیل:</span>
+                <a href="mailto:info@sunjob.ir" className="hover:text-[#0EA5A0] transition-colors">info@sunjob.ir</a>
+              </li>
+            </ul>
           </div>
         </div>
-        <Separator className="my-4" />
-        <p className="text-xs text-muted-foreground text-center leading-6" suppressHydrationWarning>
-          © {new Date().getFullYear()} سان‌جاب — انتخاب رشته کنکور ۱۴۰۵.
-          اختصاصی سان‌جاب. داده‌ها بر اساس رتبه‌های قبولی سال‌های گذشته تنظیم شده‌اند.
-        </p>
+        {/* Bottom bar */}
+        <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-gray-500 text-xs">
+            © {new Date().getFullYear()} تمامی حقوق برای SUNJOB محفوظ است. | کشف • تجربه • انتخاب
+          </p>
+        </div>
       </div>
     </footer>
   )
