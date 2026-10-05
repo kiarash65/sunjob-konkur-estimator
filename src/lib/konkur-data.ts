@@ -449,7 +449,7 @@ export const DATASET: Record<GroupKey, MajorRow[]> = {
   zaban: ZABAN,
 };
 
-// ───────────── Catalog helpers (masir.faradars.org inspired) ─────────────
+// ───────────── Catalog helpers ─────────────
 
 export interface UniversityInfo {
   name: string;

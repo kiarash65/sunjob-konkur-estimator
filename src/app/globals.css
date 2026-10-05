@@ -45,73 +45,73 @@
 
 :root {
   --radius: 0.625rem;
-  /* Sunjob-inspired palette: cream background, dark navy text, purple/teal accents */
+  /* Sunjob palette: teal primary, orange accent, cream bg */
   --background: #FFFBF5;
   --foreground: #1A2744;
   --card: #FFFFFF;
   --card-foreground: #1A2744;
   --popover: #FFFFFF;
   --popover-foreground: #1A2744;
-  --primary: #7C3AED;
+  --primary: #0EA5A0;
   --primary-foreground: #FFFFFF;
   --secondary: #F3F0ED;
   --secondary-foreground: #1A2744;
   --muted: #F3F0ED;
   --muted-foreground: #6B7280;
-  --accent: #11B7BE;
+  --accent: #F7931E;
   --accent-foreground: #FFFFFF;
   --destructive: #E11D48;
   --border: #E5E7EB;
   --input: #E5E7EB;
-  --ring: #7C3AED;
-  --chart-1: #7C3AED;
-  --chart-2: #11B7BE;
+  --ring: #0EA5A0;
+  --chart-1: #0EA5A0;
+  --chart-2: #8B5CF6;
   --chart-3: #F7931E;
-  --chart-4: #0EA5E9;
+  --chart-4: #0F5CC0;
   --chart-5: #E11D48;
   --sidebar: #FFFFFF;
   --sidebar-foreground: #1A2744;
-  --sidebar-primary: #7C3AED;
+  --sidebar-primary: #0EA5A0;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #F3F0ED;
   --sidebar-accent-foreground: #1A2744;
   --sidebar-border: #E5E7EB;
-  --sidebar-ring: #7C3AED;
+  --sidebar-ring: #0EA5A0;
 }
 
 .dark {
-  /* Dark theme: dark navy bg, purple/teal accents */
+  /* Dark theme: dark navy bg, teal primary */
   --background: #0B1120;
   --foreground: #F3F0ED;
   --card: #131B2E;
   --card-foreground: #F3F0ED;
   --popover: #131B2E;
   --popover-foreground: #F3F0ED;
-  --primary: #7C3AED;
+  --primary: #0EA5A0;
   --primary-foreground: #FFFFFF;
   --secondary: #1A2744;
   --secondary-foreground: #F3F0ED;
   --muted: #1A2744;
   --muted-foreground: #8B95A8;
-  --accent: #11B7BE;
+  --accent: #F7931E;
   --accent-foreground: #FFFFFF;
   --destructive: #E11D48;
   --border: #2D3F5E;
   --input: #2D3F5E;
-  --ring: #7C3AED;
-  --chart-1: #7C3AED;
-  --chart-2: #11B7BE;
+  --ring: #0EA5A0;
+  --chart-1: #0EA5A0;
+  --chart-2: #8B5CF6;
   --chart-3: #F7931E;
-  --chart-4: #0EA5E9;
+  --chart-4: #0F5CC0;
   --chart-5: #E11D48;
   --sidebar: #131B2E;
   --sidebar-foreground: #F3F0ED;
-  --sidebar-primary: #7C3AED;
+  --sidebar-primary: #0EA5A0;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #1A2744;
   --sidebar-accent-foreground: #F3F0ED;
   --sidebar-border: #2D3F5E;
-  --sidebar-ring: #7C3AED;
+  --sidebar-ring: #0EA5A0;
 }
 
 @layer base {

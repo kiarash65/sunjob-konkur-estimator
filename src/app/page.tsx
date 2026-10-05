@@ -499,7 +499,7 @@ export default function Home() {
 
       {/* Decorative background blobs */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-40 -right-32 w-[520px] h-[520px] rounded-full bg-violet-600/15 dark:bg-violet-600/10 blur-3xl animate-pulse-slow" />
+        <div className="absolute -top-40 -right-32 w-[520px] h-[520px] rounded-full bg-teal-500/15 dark:bg-teal-500/10 blur-3xl animate-pulse-slow" />
         <div className="absolute top-32 -left-40 w-[480px] h-[480px] rounded-full bg-teal-500/15 dark:bg-teal-500/10 blur-3xl animate-pulse-slow" style={{ animationDelay: '1.5s' }} />
         <div className="absolute bottom-20 right-1/3 w-[360px] h-[360px] rounded-full bg-amber-500/10 dark:bg-amber-500/5 blur-3xl animate-pulse-slow" style={{ animationDelay: '0.7s' }} />
       </div>
@@ -522,8 +522,8 @@ export default function Home() {
             className="flex items-center gap-3"
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-teal-500 rounded-xl blur-md opacity-60 animate-pulse" />
-              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-teal-500 flex items-center justify-center shadow-lg shadow-violet-500/30 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl blur-md opacity-60 animate-pulse" />
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/30 overflow-hidden">
                 <img src="/sunjob-logo.png" alt="سان‌جاب" className="w-7 h-7 object-contain" />
               </div>
             </div>
@@ -638,7 +638,7 @@ export default function Home() {
             </Button>
           </div>
         </div>
-        {/* Navigation bar — masir.faradars.org inspired */}
+        {/* Navigation bar */}
         <div className="container mx-auto max-w-6xl px-4 pb-2 flex items-center gap-1 overflow-x-auto">
           <button
             onClick={() => setActivePage('estimator')}
@@ -701,11 +701,11 @@ export default function Home() {
           >
             <Badge
               variant="outline"
-              className="mb-3 border-violet-500/40 text-violet-600 dark:text-violet-400 bg-violet-500/10"
+              className="mb-3 border-teal-500/40 text-teal-600 dark:text-teal-400 bg-teal-500/10"
             >
               <Sparkles className="w-3.5 h-3.5 me-1.5" /> نرم افزار رایگان تخمین رشته قبولی
             </Badge>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-violet-600 via-purple-500 to-teal-500 bg-clip-text text-transparent leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-teal-500 via-cyan-500 to-violet-500 bg-clip-text text-transparent leading-tight">
               تخمین رشته قبولی با رتبه کنکور ۱۴۰۵
             </h1>
             <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-3xl mx-auto leading-8">
@@ -966,7 +966,7 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        {/* Quick Access — masir.faradars.org inspired */}
+        {/* Quick Access */}
         <section className="mt-12 grid md:grid-cols-3 gap-4 print:hidden">
           <Card onClick={() => setActivePage('catalog')} className="border-border/60 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10 transition-all group cursor-pointer">
             <CardHeader>
@@ -1012,7 +1012,7 @@ export default function Home() {
           </Card>
         </section>
 
-        {/* Guide — masir.faradars.org inspired */}
+        {/* Guide */}
         <section className="mt-6 print:hidden">
           <Card className="border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-card to-card overflow-hidden">
             <CardHeader>
@@ -3352,7 +3352,7 @@ function HistoryPanel({
   )
 }
 
-// ───── Catalog View (فهرست رشته‌محل‌ها) — masir.faradars.org inspired ─────
+// ───── Catalog View (فهرست رشته‌محل‌ها) ─────
 function CatalogView() {
   const allRows = useMemo(() => getAllCatalogRows(), [])
   const [search, setSearch] = useState('')
@@ -3668,7 +3668,7 @@ function CatalogView() {
           {/* Disclaimer */}
           <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/40">
             <p className="text-[11px] text-muted-foreground leading-5">
-              <strong>اعتبار داده‌ها:</strong> مرجع رسمی، دفترچه سازمان سنجش است. داده‌های این ابزار از روی دفترچه‌ها استخراج شده و ممکن است ناقص یا قدیمی باشد. برآورد «رقابت در پذیرش» از ویژگی‌های خود رشته‌محل ساخته می‌شود و به رتبه قبولی سال‌های گذشته یا شانس قبولی شما ربطی ندارد.
+              <strong>اعتبار داده‌ها:</strong> داده‌های این ابزار از دفترچه‌های رسمی پذیرش استخراج شده و ممکن است ناقص، قدیمی یا نادرست باشد. برآورد «رقابت در پذیرش» از ویژگی‌های خود رشته‌محل ساخته می‌شود و به رتبه قبولی سال‌های گذشته یا شانس قبولی شما ربطی ندارد.
             </p>
           </div>
         </CardContent>
@@ -3894,8 +3894,8 @@ function Footer() {
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" asChild>
-              <a href="https://www.heyvagroup.com/shownews/5535/" target="_blank" rel="noopener noreferrer">
-                <Share2 className="w-4 h-4 me-1.5" /> منبع اصلی
+              <a href="https://sunjob.ir" target="_blank" rel="noopener noreferrer">
+                <Share2 className="w-4 h-4 me-1.5" /> سان‌جاب
               </a>
             </Button>
             <Button variant="ghost" size="sm">
@@ -3905,9 +3905,8 @@ function Footer() {
         </div>
         <Separator className="my-4" />
         <p className="text-xs text-muted-foreground text-center leading-6" suppressHydrationWarning>
-          © {new Date().getFullYear()} — این نرم افزار یک بازسازی مستقل از روی نرم افزار «تخمین رشته قبولی با رتبه»
-          سایت هیوا است و هیچ وابستگی رسمی به سازمان سنجش یا مؤسسه هیوا ندارد. داده‌ها الگویی و بر اساس
-          رتبه‌های قبولی سال‌های گذشته تنظیم شده‌اند.
+          © {new Date().getFullYear()} سان‌جاب — انتخاب رشته کنکور ۱۴۰۵.
+          اختصاصی سان‌جاب. داده‌ها بر اساس رتبه‌های قبولی سال‌های گذشته تنظیم شده‌اند.
         </p>
       </div>
     </footer>
