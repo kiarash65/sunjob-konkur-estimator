@@ -449,6 +449,137 @@ export const DATASET: Record<GroupKey, MajorRow[]> = {
   zaban: ZABAN,
 };
 
+// ───────────── Catalog helpers (masir.faradars.org inspired) ─────────────
+
+export interface UniversityInfo {
+  name: string;
+  type: UniversityType;
+  typeLabel: string;
+  city: string;
+  majorCount: number;
+  groupKeys: GroupKey[];
+  minCutoff: number;
+  maxCutoff: number;
+}
+
+export interface MajorInfo {
+  name: string;
+  group: GroupKey;
+  groupLabel: string;
+  groupEmoji: string;
+  universityCount: number;
+  universities: string[];
+  cities: string[];
+  minCutoff: number;
+  maxCutoff: number;
+}
+
+export function getAllUniversities(): UniversityInfo[] {
+  const map = new Map<string, UniversityInfo>();
+  for (const gk of Object.keys(DATASET) as GroupKey[]) {
+    for (const row of DATASET[gk]) {
+      const key = row.university;
+      if (!map.has(key)) {
+        map.set(key, {
+          name: row.university,
+          type: row.universityType,
+          typeLabel: UNIVERSITY_TYPE_LABEL[row.universityType],
+          city: row.city || "",
+          majorCount: 0,
+          groupKeys: [],
+          minCutoff: Infinity,
+          maxCutoff: 0,
+        });
+      }
+      const info = map.get(key)!;
+      info.majorCount++;
+      if (!info.groupKeys.includes(gk)) info.groupKeys.push(gk);
+      for (const q of Object.values(row.cutoffs)) {
+        if (typeof q === "number") {
+          if (q < info.minCutoff) info.minCutoff = q;
+          if (q > info.maxCutoff) info.maxCutoff = q;
+        }
+      }
+    }
+  }
+  return Array.from(map.values()).sort((a, b) =>
+    a.name.localeCompare(b.name, "fa")
+  );
+}
+
+export function getAllMajors(): MajorInfo[] {
+  const map = new Map<string, MajorInfo>();
+  for (const gk of Object.keys(DATASET) as GroupKey[]) {
+    const gInfo = GROUPS.find((g) => g.key === gk)!;
+    for (const row of DATASET[gk]) {
+      const key = row.major;
+      if (!map.has(key)) {
+        map.set(key, {
+          name: row.major,
+          group: gk,
+          groupLabel: gInfo.label,
+          groupEmoji: gInfo.emoji,
+          universityCount: 0,
+          universities: [],
+          cities: [],
+          minCutoff: Infinity,
+          maxCutoff: 0,
+        });
+      }
+      const info = map.get(key)!;
+      if (!info.universities.includes(row.university)) {
+        info.universities.push(row.university);
+        info.universityCount++;
+      }
+      if (row.city && !info.cities.includes(row.city)) {
+        info.cities.push(row.city);
+      }
+      for (const q of Object.values(row.cutoffs)) {
+        if (typeof q === "number") {
+          if (q < info.minCutoff) info.minCutoff = q;
+          if (q > info.maxCutoff) info.maxCutoff = q;
+        }
+      }
+    }
+  }
+  return Array.from(map.values()).sort((a, b) =>
+    a.name.localeCompare(b.name, "fa")
+  );
+}
+
+export interface CatalogRow {
+  major: string;
+  university: string;
+  universityType: UniversityType;
+  universityTypeLabel: string;
+  city: string;
+  group: GroupKey;
+  groupLabel: string;
+  groupEmoji: string;
+  cutoffs: Partial<Record<QuotaKey, number>>;
+}
+
+export function getAllCatalogRows(): CatalogRow[] {
+  const rows: CatalogRow[] = [];
+  for (const gk of Object.keys(DATASET) as GroupKey[]) {
+    const gInfo = GROUPS.find((g) => g.key === gk)!;
+    for (const row of DATASET[gk]) {
+      rows.push({
+        major: row.major,
+        university: row.university,
+        universityType: row.universityType,
+        universityTypeLabel: UNIVERSITY_TYPE_LABEL[row.universityType],
+        city: row.city || "",
+        group: gk,
+        groupLabel: gInfo.label,
+        groupEmoji: gInfo.emoji,
+        cutoffs: row.cutoffs,
+      });
+    }
+  }
+  return rows;
+}
+
 // ───────────── Estimation logic ─────────────
 export interface EstimatedRow extends MajorRow {
   cutoff: number;            // the cutoff for the selected quota

@@ -957,3 +957,53 @@ Task: Redesign with sunjob.ir color palette + add masir.faradars.org features
 - راهنمای انتخاب رشته section present
 - Quick Access cards (فهرست رشته‌محل‌ها, دانشگاه‌ها, رشته‌های دانشگاهی) present
 - ESLint clean, no runtime errors
+
+---
+Task ID: 14
+Agent: main (user-requested masir features)
+Task: Actually implement masir.faradars.org features (catalog, universities, majors views)
+
+## Problem
+User pointed out that the previous "masir features" were just text cards, not actual functional features like masir.faradars.org has.
+
+## Implementation
+Added 3 new functional views with navigation tabs:
+
+1. **Navigation bar** (below header):
+   - 4 tabs: تخمین رتبه | فهرست رشته‌محل‌ها | دانشگاه‌ها | رشته‌های دانشگاهی
+   - Active tab highlighted with primary color
+   - Quick-access cards now clickable → navigate to respective view
+
+2. **فهرست رشته‌محل‌ها (CatalogView)**:
+   - Full searchable/filterable table of ALL major×university combos from the dataset
+   - Filters: text search, group filter, university type filter, sort (by major/university/cutoff-asc/cutoff-desc)
+   - Table columns: group, major, university, city, type, region1 cutoff, region2 cutoff, region3 cutoff
+   - "Load more" button (50 rows at a time) for performance with 1444+ entries
+   - Results count display
+
+3. **دانشگاه‌ها (UniversitiesView)**:
+   - Card-grid listing of all unique universities (273 universities from real data)
+   - Each card shows: name, city, type badge, major count, group badges, cutoff range
+   - Filters: text search (name/city), type filter
+   - 2-column responsive grid
+
+4. **رشته‌های دانشگاهی (MajorsView)**:
+   - Card-grid listing of all unique majors (116 majors from real data)
+   - Each card shows: name, group+emoji, university count, city count, cutoff range
+   - Shows city names for majors available in ≤5 cities
+   - Filters: text search (name), group filter
+   - 2-column responsive grid
+
+## Helper functions added to konkur-data.ts:
+- `getAllUniversities()` — returns UniversityInfo[] with name, type, city, majorCount, groupKeys, minCutoff, maxCutoff
+- `getAllMajors()` — returns MajorInfo[] with name, group, universityCount, universities, cities, minCutoff, maxCutoff
+- `getAllCatalogRows()` — returns CatalogRow[] with all major×university rows + cutoffs
+
+## Verification
+- Navigation: 4 tabs visible (تخمین رتبه, فهرست رشته‌محل‌ها, دانشگاه‌ها, رشته‌های دانشگاهی)
+- Catalog: table with 50 rows (of 1444+), search/filter/sort all functional
+- Universities: 273 university cards with search/filter
+- Majors: 116 major cards with search/filter
+- Quick-access cards clickable → navigate to respective view
+- Returning to estimator shows form correctly
+- ESLint clean, no runtime errors

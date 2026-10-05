@@ -133,6 +133,12 @@ import {
   resultToJSON,
   computeDetailedStats,
   type DetailedStats,
+  getAllUniversities,
+  getAllMajors,
+  getAllCatalogRows,
+  type UniversityInfo,
+  type MajorInfo,
+  type CatalogRow,
   toPersianDigits,
 } from '@/lib/konkur-data'
 
@@ -234,6 +240,7 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showShortcutHelp, setShowShortcutHelp] = useState(false)
+  const [activePage, setActivePage] = useState<'estimator' | 'catalog' | 'universities' | 'majors'>('estimator')
   const resultRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -631,6 +638,57 @@ export default function Home() {
             </Button>
           </div>
         </div>
+        {/* Navigation bar — masir.faradars.org inspired */}
+        <div className="container mx-auto max-w-6xl px-4 pb-2 flex items-center gap-1 overflow-x-auto">
+          <button
+            onClick={() => setActivePage('estimator')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors',
+              activePage === 'estimator'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            )}
+          >
+            <Calculator className="w-3.5 h-3.5 inline ml-1" />
+            تخمین رتبه
+          </button>
+          <button
+            onClick={() => setActivePage('catalog')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors',
+              activePage === 'catalog'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            )}
+          >
+            <ListChecks className="w-3.5 h-3.5 inline ml-1" />
+            فهرست رشته‌محل‌ها
+          </button>
+          <button
+            onClick={() => setActivePage('universities')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors',
+              activePage === 'universities'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            )}
+          >
+            <GraduationCap className="w-3.5 h-3.5 inline ml-1" />
+            دانشگاه‌ها
+          </button>
+          <button
+            onClick={() => setActivePage('majors')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors',
+              activePage === 'majors'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            )}
+          >
+            <MapPinIcon className="w-3.5 h-3.5 inline ml-1" />
+            رشته‌های دانشگاهی
+          </button>
+        </div>
       </header>
 
       {/* Hero */}
@@ -662,6 +720,8 @@ export default function Home() {
       </section>
 
       <main id="main-content" className="container mx-auto max-w-6xl px-4 pb-24 flex-1 scroll-mt-20" tabIndex={-1}>
+        {activePage === 'estimator' && (
+        <>
         {/* Print-only header — shows the form context in printed/PDF output */}
         <div className="hidden print:block mb-4 pb-4 border-b-2 border-black">
           <h1 className="text-2xl font-bold">تخمین رشته قبولی با رتبه کنکور ۱۴۰۵</h1>
@@ -908,7 +968,7 @@ export default function Home() {
 
         {/* Quick Access — masir.faradars.org inspired */}
         <section className="mt-12 grid md:grid-cols-3 gap-4 print:hidden">
-          <Card className="border-border/60 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10 transition-all group cursor-pointer">
+          <Card onClick={() => setActivePage('catalog')} className="border-border/60 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10 transition-all group cursor-pointer">
             <CardHeader>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-600 to-purple-500 flex items-center justify-center mb-2 transition-transform group-hover:scale-110">
                 <ListChecks className="w-6 h-6 text-white" />
@@ -922,7 +982,7 @@ export default function Home() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all group cursor-pointer">
+          <Card onClick={() => setActivePage('universities')} className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all group cursor-pointer">
             <CardHeader>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center mb-2 transition-transform group-hover:scale-110">
                 <GraduationCap className="w-6 h-6 text-white" />
@@ -936,7 +996,7 @@ export default function Home() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-border/60 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all group cursor-pointer">
+          <Card onClick={() => setActivePage('majors')} className="border-border/60 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all group cursor-pointer">
             <CardHeader>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mb-2 transition-transform group-hover:scale-110">
                 <MapPin className="w-6 h-6 text-white" />
@@ -1096,6 +1156,20 @@ export default function Home() {
             </CardContent>
           </Card>
         </section>
+        </>
+        )}
+
+        {activePage === 'catalog' && (
+          <CatalogView />
+        )}
+
+        {activePage === 'universities' && (
+          <UniversitiesView />
+        )}
+
+        {activePage === 'majors' && (
+          <MajorsView />
+        )}
       </main>
 
       {/* Keyboard shortcut help dialog */}
@@ -3275,6 +3349,360 @@ function HistoryPanel({
         )}
       </CardContent>
     </Card>
+  )
+}
+
+// ───── Catalog View (فهرست رشته‌محل‌ها) — masir.faradars.org inspired ─────
+function CatalogView() {
+  const allRows = useMemo(() => getAllCatalogRows(), [])
+  const [search, setSearch] = useState('')
+  const [groupFilter, setGroupFilter] = useState<GroupKey | 'all'>('all')
+  const [uniTypeFilter, setUniTypeFilter] = useState<UniversityType | 'all'>('all')
+  const [sortBy, setSortBy] = useState<'major' | 'university' | 'cutoff-asc' | 'cutoff-desc'>('major')
+  const [visibleCount, setVisibleCount] = useState(50)
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    let rows = allRows.filter((r) => {
+      if (groupFilter !== 'all' && r.group !== groupFilter) return false
+      if (uniTypeFilter !== 'all' && r.universityType !== uniTypeFilter) return false
+      if (q) {
+        const hay = (r.major + ' ' + r.university + ' ' + (r.city || '')).toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
+    rows = [...rows]
+    switch (sortBy) {
+      case 'major': rows.sort((a, b) => a.major.localeCompare(b.major, 'fa')); break
+      case 'university': rows.sort((a, b) => a.university.localeCompare(b.university, 'fa')); break
+      case 'cutoff-asc': rows.sort((a, b) => (a.cutoffs.region1 ?? 999999) - (b.cutoffs.region1 ?? 999999)); break
+      case 'cutoff-desc': rows.sort((a, b) => (b.cutoffs.region1 ?? 0) - (a.cutoffs.region1 ?? 0)); break
+    }
+    return rows
+  }, [allRows, search, groupFilter, uniTypeFilter, sortBy])
+
+  const visibleRows = filtered.slice(0, visibleCount)
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-border/60">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ListChecks className="w-4 h-4 text-violet-500" />
+            فهرست رشته‌محل‌ها
+          </CardTitle>
+          <CardDescription>
+            مرور کامل {fa(allRows.length)} رشته‌محل کنکور سراسری ۱۴۰۵
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setVisibleCount(50) }}
+                placeholder="جستجوی رشته، دانشگاه یا شهر..."
+                aria-label="جستجو"
+                className="pr-9 h-9"
+              />
+            </div>
+            <Select value={groupFilter} onValueChange={(v) => setGroupFilter(v as GroupKey | 'all')}>
+              <SelectTrigger className="h-9 w-[120px] text-xs" aria-label="فیلتر گروه">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه گروه‌ها</SelectItem>
+                {GROUPS.map((g) => (
+                  <SelectItem key={g.key} value={g.key}>{g.emoji} {g.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={uniTypeFilter} onValueChange={(v) => setUniTypeFilter(v as UniversityType | 'all')}>
+              <SelectTrigger className="h-9 w-[130px] text-xs" aria-label="فیلتر نوع دانشگاه">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه انواع</SelectItem>
+                {Object.entries(UNIVERSITY_TYPE_LABEL).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="h-9 w-[130px] text-xs" aria-label="مرتب‌سازی">
+                <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground ms-1" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="major">نام رشته</SelectItem>
+                <SelectItem value="university">نام دانشگاه</SelectItem>
+                <SelectItem value="cutoff-asc">سخت‌ترین ورود</SelectItem>
+                <SelectItem value="cutoff-desc">آسان‌ترین ورود</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Results count */}
+          <div className="text-xs text-muted-foreground mb-3">
+            نمایش {fa(Math.min(visibleCount, filtered.length))} از {fa(filtered.length)} رشته‌محل
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border/60">
+                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">گروه</th>
+                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">رشته</th>
+                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">دانشگاه</th>
+                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium hidden sm:table-cell">شهر</th>
+                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">نوع</th>
+                  <th className="text-center py-2 px-2 text-xs text-muted-foreground font-medium">منطقه ۱</th>
+                  <th className="text-center py-2 px-2 text-xs text-muted-foreground font-medium hidden md:table-cell">منطقه ۲</th>
+                  <th className="text-center py-2 px-2 text-xs text-muted-foreground font-medium hidden md:table-cell">منطقه ۳</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleRows.map((r, i) => (
+                  <tr key={i} className="border-b border-border/40 hover:bg-foreground/[0.02]">
+                    <td className="py-2 px-2 text-xs">{r.groupEmoji} {r.groupLabel}</td>
+                    <td className="py-2 px-2 text-xs font-medium">{r.major}</td>
+                    <td className="py-2 px-2 text-xs">{r.university}</td>
+                    <td className="py-2 px-2 text-xs text-muted-foreground hidden sm:table-cell">{r.city || '—'}</td>
+                    <td className="py-2 px-2 text-xs"><Badge variant="secondary" className="text-[9px] px-1.5 py-0">{r.universityTypeLabel}</Badge></td>
+                    <td className="text-center py-2 px-2 text-xs font-mono tabular-nums">{r.cutoffs.region1 ? faFmt(r.cutoffs.region1) : '—'}</td>
+                    <td className="text-center py-2 px-2 text-xs font-mono tabular-nums hidden md:table-cell">{r.cutoffs.region2 ? faFmt(r.cutoffs.region2) : '—'}</td>
+                    <td className="text-center py-2 px-2 text-xs font-mono tabular-nums hidden md:table-cell">{r.cutoffs.region3 ? faFmt(r.cutoffs.region3) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Load more */}
+          {visibleCount < filtered.length && (
+            <div className="text-center mt-4">
+              <Button variant="outline" onClick={() => setVisibleCount((c) => c + 50)}>
+                نمایش بیشتر ({fa(filtered.length - visibleCount)} مورد باقی‌مانده)
+              </Button>
+            </div>
+          )}
+          {filtered.length === 0 && (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              موردی با فیلترهای انتخاب‌شده یافت نشد.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// ───── Universities View (دانشگاه‌ها) ─────
+function UniversitiesView() {
+  const unis = useMemo(() => getAllUniversities(), [])
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState<UniversityType | 'all'>('all')
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return unis.filter((u) => {
+      if (typeFilter !== 'all' && u.type !== typeFilter) return false
+      if (q) {
+        const hay = (u.name + ' ' + (u.city || '')).toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
+  }, [unis, search, typeFilter])
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-border/60">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-teal-500" />
+            دانشگاه‌ها
+          </CardTitle>
+          <CardDescription>
+            فهرست {fa(unis.length)} دانشگاه در دیتابیس کنکور سراسری ۱۴۰۵
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="جستجوی نام دانشگاه یا شهر..."
+                aria-label="جستجو"
+                className="pr-9 h-9"
+              />
+            </div>
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as UniversityType | 'all')}>
+              <SelectTrigger className="h-9 w-[140px] text-xs" aria-label="فیلتر نوع">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه انواع</SelectItem>
+                {Object.entries(UNIVERSITY_TYPE_LABEL).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="text-xs text-muted-foreground mb-3">
+            {fa(filtered.length)} دانشگاه
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-2">
+            {filtered.map((u, i) => (
+              <div key={i} className="p-3 rounded-lg border border-border/60 bg-card/50 hover:border-violet-500/30 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm leading-6">{u.name}</p>
+                    <p className="text-xs text-muted-foreground">{u.city || '—'}</p>
+                  </div>
+                  <Badge variant="secondary" className="text-[9px] px-1.5 py-0 shrink-0">{u.typeLabel}</Badge>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                    {fa(u.majorCount)} رشته‌محل
+                  </Badge>
+                  {u.groupKeys.map((gk) => {
+                    const g = GROUPS.find((g) => g.key === gk)!
+                    return (
+                      <Badge key={gk} variant="outline" className="text-[9px] px-1.5 py-0">
+                        {g.emoji} {g.label}
+                      </Badge>
+                    )
+                  })}
+                  {u.minCutoff < Infinity && (
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">
+                      رتبه: {faFmt(u.minCutoff)}–{faFmt(u.maxCutoff)}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {filtered.length === 0 && (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              دانشگاهی یافت نشد.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// ───── Majors View (رشته‌های دانشگاهی) ─────
+function MajorsView() {
+  const majors = useMemo(() => getAllMajors(), [])
+  const [search, setSearch] = useState('')
+  const [groupFilter, setGroupFilter] = useState<GroupKey | 'all'>('all')
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return majors.filter((m) => {
+      if (groupFilter !== 'all' && m.group !== groupFilter) return false
+      if (q && !m.name.toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [majors, search, groupFilter])
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-border/60">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MapPinIcon className="w-4 h-4 text-amber-500" />
+            رشته‌های دانشگاهی
+          </CardTitle>
+          <CardDescription>
+            کاتالوگ {fa(majors.length)} رشته دانشگاهی کنکور سراسری ۱۴۰۵
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="جستجوی نام رشته..."
+                aria-label="جستجو"
+                className="pr-9 h-9"
+              />
+            </div>
+            <Select value={groupFilter} onValueChange={(v) => setGroupFilter(v as GroupKey | 'all')}>
+              <SelectTrigger className="h-9 w-[120px] text-xs" aria-label="فیلتر گروه">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه گروه‌ها</SelectItem>
+                {GROUPS.map((g) => (
+                  <SelectItem key={g.key} value={g.key}>{g.emoji} {g.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="text-xs text-muted-foreground mb-3">
+            {fa(filtered.length)} رشته
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-2">
+            {filtered.map((m, i) => (
+              <div key={i} className="p-3 rounded-lg border border-border/60 bg-card/50 hover:border-amber-500/30 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm leading-6">{m.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {m.groupEmoji} {m.groupLabel}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                    {fa(m.universityCount)} دانشگاه
+                  </Badge>
+                  {m.cities.length > 0 && (
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">
+                      {fa(m.cities.length)} شهر
+                    </Badge>
+                  )}
+                  {m.minCutoff < Infinity && (
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">
+                      رتبه: {faFmt(m.minCutoff)}–{faFmt(m.maxCutoff)}
+                    </Badge>
+                  )}
+                </div>
+                {m.cities.length > 0 && m.cities.length <= 5 && (
+                  <p className="text-[10px] text-muted-foreground mt-1.5">
+                    شهرها: {m.cities.join('، ')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          {filtered.length === 0 && (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              رشته‌ای یافت نشد.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
