@@ -241,6 +241,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false)
   const [showShortcutHelp, setShowShortcutHelp] = useState(false)
   const [activePage, setActivePage] = useState<'estimator' | 'catalog' | 'universities' | 'majors'>('estimator')
+  const [activeGroupTab, setActiveGroupTab] = useState<GroupKey>('riazi')
   const resultRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -490,6 +491,22 @@ export default function Home() {
     window.print()
   }, [])
 
+  // Get popular majors for a group — masir style
+  const allCatalogData = useMemo(() => getAllCatalogRows(), [])
+  function getPopularMajors(gk: GroupKey): { university: string; major: string; percent: number }[] {
+    const rows = allCatalogData.filter((r) => r.group === gk)
+    // Sort by lowest cutoff (= hardest to get in = most popular)
+    const sorted = rows
+      .filter((r) => r.cutoffs.region1 !== undefined)
+      .sort((a, b) => (a.cutoffs.region1 ?? 999999) - (b.cutoffs.region1 ?? 999999))
+    const total = sorted.length || 1
+    return sorted.slice(0, 10).map((r, i) => ({
+      university: r.university,
+      major: r.major,
+      percent: Math.round(((total - i) / total) * 100),
+    }))
+  }
+
   const isDark = theme === 'dark'
 
   return (
@@ -691,31 +708,205 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative">
-        <div className="container mx-auto max-w-6xl px-4 pt-10 pb-6 text-center">
+      {/* Hero — masir.faradars.org style */}
+      <section className="relative overflow-hidden pt-16 pb-12 lg:pt-24 lg:pb-16">
+        {/* Background blobs — sunjob style */}
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute -top-20 right-10 w-[400px] h-[400px] rounded-full bg-[#0EA5A0]/12 blur-3xl" />
+          <div className="absolute top-40 left-10 w-[350px] h-[350px] rounded-full bg-[#F7931E]/8 blur-3xl" />
+        </div>
+        <div className="container mx-auto max-w-4xl px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Badge
-              variant="outline"
-              className="mb-3 border-teal-500/40 text-teal-600 dark:text-teal-400 bg-teal-500/10"
-            >
-              <Sparkles className="w-3.5 h-3.5 me-1.5" /> اختصاصی سان‌جاب
-            </Badge>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-teal-500 via-cyan-500 to-teal-400 bg-clip-text text-transparent leading-tight">
-              آینده‌ات ارزش یک تصمیم آگاهانه را دارد
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0EA5A0]/10 text-[#0EA5A0] text-xs font-bold mb-4">
+              ۱۰۰٪ رایگان
+            </div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-[#1A2744] leading-tight mb-4">
+              با شناخت بیشتر انتخاب رشته کنید
             </h1>
-            <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-3xl mx-auto leading-8">
-              انتخاب رشته یکی از مهم‌ترین تصمیم‌های مسیر زندگی است. در سان‌جاب، گروه آزمایشی، سهمیه و رتبه خود را وارد کنید تا فهرستی از رشته‌محل‌های پیشنهادی را در سه دسته{' '}
-              <span className="text-teal-500 font-semibold">خوش‌بینانه</span>،{' '}
-              <span className="text-amber-500 font-semibold">منطقی</span> و{' '}
-              <span className="text-rose-500 font-semibold">بدبینانه</span> مشاهده کنید.
-              داده‌ها بر اساس کارنامه قبولی سال گذشته و با خطای تخمینی کمتر از ۵٪ تنظیم شده‌اند.
+            <ul className="text-sm text-muted-foreground max-w-2xl mx-auto space-y-1.5 mb-6 text-right inline-block">
+              <li className="flex items-center gap-2"><span className="text-[#0EA5A0]">✓</span> همه رشته‌محل‌ها را یکجا ببینید و در آن‌ها جستوجو کنید.</li>
+              <li className="flex items-center gap-2"><span className="text-[#0EA5A0]">✓</span> فهرستی متناسب با علاقه و شرایط خودتان بسازید.</li>
+              <li className="flex items-center gap-2"><span className="text-[#0EA5A0]">✓</span> ترتیب انتخاب‌ها را خودتان تعیین کنید و فهرست را در سامانه ثبت کنید.</li>
+            </ul>
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-4">
+              <Button
+                onClick={() => {
+                  setActivePage('estimator')
+                  setTimeout(() => document.getElementById('rankInput')?.focus(), 100)
+                }}
+                className="bg-[#0EA5A0] hover:bg-[#0EA5A0]/90 text-white px-6 h-11"
+              >
+                شروع انتخاب رشته
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setActivePage('catalog')}
+                className="border-[#0EA5A0]/30 text-[#0EA5A0] hover:bg-[#0EA5A0]/5 px-6 h-11"
+              >
+                مشاهده رشته‌محل‌ها
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              بدون ثبت‌نام و فقط با وارد کردن رتبه خود شروع کنید.
             </p>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Stats bar — masir style */}
+      <section className="border-y border-border/40 bg-[#F3F0ED]/30 py-8">
+        <div className="container mx-auto max-w-4xl px-4">
+          <h2 className="text-center text-base font-bold text-[#1A2744] mb-2">
+            رشته‌محل‌های دفترچه‌های رسمی را یکجا جستوجو کنید
+          </h2>
+          <p className="text-center text-xs text-muted-foreground mb-6 max-w-xl mx-auto">
+            سان‌جاب اطلاعات دفترچه‌های رسمی پذیرش ۱۴۰۵ را یکجا گردآوری کرده است تا بتوانید همه گزینه‌هایتان را کنار هم ببینید و با هم مقایسه کنید.
+          </p>
+          <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#0EA5A0]">{faFmt(getAllCatalogRows().length)}</div>
+              <div className="text-[11px] text-muted-foreground mt-1">رشته‌محل قابل جستوجو</div>
+            </div>
+            <div className="text-center border-x border-border/40">
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#0EA5A0]">{faFmt(getAllUniversities().length)}</div>
+              <div className="text-[11px] text-muted-foreground mt-1">دانشگاه و مرکز آموزش عالی</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#0EA5A0]">{faFmt(getAllMajors().length)}</div>
+              <div className="text-[11px] text-muted-foreground mt-1">رشته تحصیلی</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Popular majors — masir style */}
+      <section className="py-10">
+        <div className="container mx-auto max-w-4xl px-4">
+          <h2 className="text-center text-base font-bold text-[#1A2744] mb-2">
+            پرطرفدارترین رشته‌ها و دانشگاه‌ها در هر گروه آزمایشی
+          </h2>
+          <p className="text-center text-xs text-muted-foreground mb-6 max-w-xl mx-auto">
+            بیشترین تقاضا برای رشته‌محل‌های هر گروه آزمایشی بر اساس داده‌های پذیرش سال‌های گذشته.
+          </p>
+          <div className="flex items-center justify-center gap-1 mb-6 flex-wrap">
+            {GROUPS.map((g) => (
+              <button
+                key={g.key}
+                onClick={() => setActiveGroupTab(g.key)}
+                className={cn(
+                  'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
+                  activeGroupTab === g.key
+                    ? 'bg-[#0EA5A0] text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                )}
+              >
+                {g.emoji} {g.label}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            {getPopularMajors(activeGroupTab).map((item, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border/40 hover:border-[#0EA5A0]/30 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-bold text-[#1A2744]">{item.university}</span>
+                    <span className="text-muted-foreground">— {item.major}</span>
+                  </div>
+                </div>
+                <div className="shrink-0 text-left">
+                  <span className="text-sm font-bold text-[#0EA5A0]">{fa(item.percent)}٪</span>
+                  <span className="text-[10px] text-muted-foreground ms-1">از متقاضیان</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Know before you choose — masir style */}
+      <section className="py-10 bg-[#F3F0ED]/30">
+        <div className="container mx-auto max-w-4xl px-4">
+          <h2 className="text-center text-base font-bold text-[#1A2744] mb-2">
+            رشته‌ها و دانشگاه‌ها را پیش از انتخاب بشناسید
+          </h2>
+          <p className="text-center text-xs text-muted-foreground mb-6">
+            پیش از تصمیم‌گیری، معرفی رشته‌ها، اطلاعات دانشگاه‌ها و راهنماهای انتخاب رشته را هم بخوانید.
+          </p>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-[#1A2744] mb-2">رشته‌های دانشگاهی</h3>
+              <p className="text-xs text-muted-foreground mb-3">معرفی {faFmt(getAllMajors().length)} رشته تحصیلی</p>
+              <ul className="space-y-1.5">
+                {getAllMajors().slice(0, 5).map((m, i) => (
+                  <li key={i}>
+                    <button
+                      onClick={() => setActivePage('majors')}
+                      className="text-xs text-[#0EA5A0] hover:underline"
+                    >
+                      {m.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => setActivePage('majors')} className="text-xs text-[#0EA5A0] font-medium hover:underline mt-2">
+                مشاهده همه رشته‌ها ←
+              </button>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#1A2744] mb-2">دانشگاه‌ها</h3>
+              <p className="text-xs text-muted-foreground mb-3">معرفی {faFmt(getAllUniversities().length)} دانشگاه و مرکز آموزشی</p>
+              <ul className="space-y-1.5">
+                {getAllUniversities().slice(0, 5).map((u, i) => (
+                  <li key={i}>
+                    <button
+                      onClick={() => setActivePage('universities')}
+                      className="text-xs text-[#0EA5A0] hover:underline"
+                    >
+                      {u.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => setActivePage('universities')} className="text-xs text-[#0EA5A0] font-medium hover:underline mt-2">
+                مشاهده همه دانشگاه‌ها ←
+              </button>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#1A2744] mb-2">راهنمای انتخاب رشته</h3>
+              <p className="text-xs text-muted-foreground mb-3">راهنمای کامل انتخاب رشته</p>
+              <ul className="space-y-1.5">
+                <li><span className="text-xs text-[#0EA5A0] hover:underline cursor-pointer">سهمیه‌ها و پذیرش بومی</span></li>
+                <li><span className="text-xs text-[#0EA5A0] hover:underline cursor-pointer">ارزیابی دانشگاه</span></li>
+                <li><span className="text-xs text-[#0EA5A0] hover:underline cursor-pointer">نقش خانواده و مشاور</span></li>
+                <li><span className="text-xs text-[#0EA5A0] hover:underline cursor-pointer">رشته، دانشگاه یا شهر؟</span></li>
+                <li><span className="text-xs text-[#0EA5A0] hover:underline cursor-pointer">خواندن دفترچه انتخاب رشته</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA — masir style */}
+      <section className="py-10">
+        <div className="container mx-auto max-w-2xl px-4 text-center">
+          <h2 className="text-base font-bold text-[#1A2744] mb-2">آماده‌اید فهرستتان را بسازید؟</h2>
+          <p className="text-xs text-muted-foreground mb-4">رتبه خود را وارد کنید تا اولین فهرست پیشنهادی‌تان آماده شود.</p>
+          <Button
+            onClick={() => {
+              setActivePage('estimator')
+              setTimeout(() => document.getElementById('rankInput')?.focus(), 100)
+            }}
+            className="bg-[#0EA5A0] hover:bg-[#0EA5A0]/90 text-white px-6 h-11"
+          >
+            شروع انتخاب رشته
+          </Button>
         </div>
       </section>
 
