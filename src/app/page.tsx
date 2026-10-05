@@ -492,8 +492,8 @@ export default function Home() {
 
       {/* Decorative background blobs */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-40 -right-32 w-[520px] h-[520px] rounded-full bg-emerald-500/15 dark:bg-emerald-500/10 blur-3xl animate-pulse-slow" />
-        <div className="absolute top-32 -left-40 w-[480px] h-[480px] rounded-full bg-violet-500/15 dark:bg-violet-500/10 blur-3xl animate-pulse-slow" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute -top-40 -right-32 w-[520px] h-[520px] rounded-full bg-violet-600/15 dark:bg-violet-600/10 blur-3xl animate-pulse-slow" />
+        <div className="absolute top-32 -left-40 w-[480px] h-[480px] rounded-full bg-teal-500/15 dark:bg-teal-500/10 blur-3xl animate-pulse-slow" style={{ animationDelay: '1.5s' }} />
         <div className="absolute bottom-20 right-1/3 w-[360px] h-[360px] rounded-full bg-amber-500/10 dark:bg-amber-500/5 blur-3xl animate-pulse-slow" style={{ animationDelay: '0.7s' }} />
       </div>
 
@@ -515,8 +515,8 @@ export default function Home() {
             className="flex items-center gap-3"
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl blur-md opacity-60 animate-pulse" />
-              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-teal-500 rounded-xl blur-md opacity-60 animate-pulse" />
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-teal-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
             </div>
@@ -643,11 +643,11 @@ export default function Home() {
           >
             <Badge
               variant="outline"
-              className="mb-3 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
+              className="mb-3 border-violet-500/40 text-violet-600 dark:text-violet-400 bg-violet-500/10"
             >
               <Sparkles className="w-3.5 h-3.5 me-1.5" /> نرم افزار رایگان تخمین رشته قبولی
             </Badge>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-emerald-500 via-teal-500 to-violet-500 bg-clip-text text-transparent leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-violet-600 via-purple-500 to-teal-500 bg-clip-text text-transparent leading-tight">
               تخمین رشته قبولی با رتبه کنکور ۱۴۰۵
             </h1>
             <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-3xl mx-auto leading-8">
@@ -906,12 +906,102 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        {/* Info & FAQ */}
+        {/* Quick Access — masir.faradars.org inspired */}
         <section className="mt-12 grid md:grid-cols-3 gap-4 print:hidden">
-          <Card className="border-border/60 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 transition-all">
+          <Card className="border-border/60 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10 transition-all group cursor-pointer">
+            <CardHeader>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-600 to-purple-500 flex items-center justify-center mb-2 transition-transform group-hover:scale-110">
+                <ListChecks className="w-6 h-6 text-white" />
+              </div>
+              <CardTitle className="text-base">فهرست رشته‌محل‌ها</CardTitle>
+              <CardDescription>جستجو، مقایسه و اولویت‌بندی</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground leading-7">
+                فهرست کامل رشته‌محل‌های کنکور سراسری ۱۴۰۵ را مرور کنید. با فیلتر گروه آزمایشی، سهمیه و دانشگاه رشته‌محل‌های مرتبط را ببینید و فهرست انتخاب رشته‌تان را آگاهانه بچینید.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all group cursor-pointer">
+            <CardHeader>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center mb-2 transition-transform group-hover:scale-110">
+                <GraduationCap className="w-6 h-6 text-white" />
+              </div>
+              <CardTitle className="text-base">دانشگاه‌ها</CardTitle>
+              <CardDescription>معرفی دانشگاه‌های سراسری</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground leading-7">
+                فهرست کامل دانشگاه‌های دولتی، آزاد، پیام نور، غیرانتفاعی، علمی کاربردی و فرهنگیان را مرور کنید. اطلاعات هر دانشگاه از جمله شهر، نوع و رشته‌های موجود را ببینید.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/60 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all group cursor-pointer">
+            <CardHeader>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mb-2 transition-transform group-hover:scale-110">
+                <MapPin className="w-6 h-6 text-white" />
+              </div>
+              <CardTitle className="text-base">رشته‌های دانشگاهی</CardTitle>
+              <CardDescription>معرفی رشته‌های تحصیلی</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground leading-7">
+                معرفی کامل رشته‌های تحصیلی در ۵ گروه آزمایشی (ریاضی، تجربی، انسانی، هنر، زبان). برای هر رشته بازار کار، ادامه تحصیل و دانشگاه‌های دارای آن رشته را ببینید.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Guide — masir.faradars.org inspired */}
+        <section className="mt-6 print:hidden">
+          <Card className="border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-card to-card overflow-hidden">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <ListChecks className="w-4 h-4 text-emerald-500" />
+                <Lightbulb className="w-4 h-4 text-violet-500" />
+                راهنمای انتخاب رشته
+              </CardTitle>
+              <CardDescription>نکات کلیدی برای انتخاب رشته آگاهانه</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-bold">
+                    <span className="w-6 h-6 rounded-full bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center text-xs">۱</span>
+                    <span>خودشناسی</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-6">
+                    قبل از انتخاب رشته، علایق، استعدادها و ارزش‌های شخصی خود را بشناسید. تست‌های روان‌شناسی شغلی مانند هالند (RIASEC) می‌توانند کمک‌کننده باشند.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-bold">
+                    <span className="w-6 h-6 rounded-full bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xs">۲</span>
+                    <span>آشنایی با مشاغل</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-6">
+                    بازار کار، درآمد و آینده هر رشته را بررسی کنید. واقعیت‌های بازار کار ایران را در نظر بگیرید و از مشاوران متخصص کمک بگیرید.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-bold">
+                    <span className="w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs">۳</span>
+                    <span>انتخاب هوشمندانه</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-6">
+                    انتخاب رشته را در سه دسته خوش‌بینانه (رویایی)، منطقی و بدبینانه (امن) قرار دهید. حداقل ۲۴ انتخاب در لیست خود داشته باشید.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Info & FAQ */}
+        <section className="mt-6 grid md:grid-cols-3 gap-4 print:hidden">
+          <Card className="border-border/60 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10 transition-all">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ListChecks className="w-4 h-4 text-violet-500" />
                 ۵ گروه آزمایشی
               </CardTitle>
             </CardHeader>
@@ -921,10 +1011,10 @@ export default function Home() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-border/60 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all">
+          <Card className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-amber-500" />
+                <MapPin className="w-4 h-4 text-teal-500" />
                 ۵ نوع سهمیه
               </CardTitle>
             </CardHeader>

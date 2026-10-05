@@ -928,3 +928,32 @@ User reported that the bucketing logic was backwards:
   - خوش‌بینانه = dream/reach choices (rank worse than cutoff) — "I'm optimistic I'll get in"
   - منطقی = realistic choices (rank near cutoff)
   - بدبینانه = safe choices (rank better than cutoff) — "I'm pessimistic so I pick safe options"
+
+---
+Task ID: 13
+Agent: main (user-requested redesign)
+Task: Redesign with sunjob.ir color palette + add masir.faradars.org features
+
+## Changes applied
+1. **Sunjob.ir color palette** in globals.css:
+   - Light theme: cream background (#FFFBF5), dark navy text (#1A2744), purple primary (#7C3AED), teal accent (#11B7BE), amber (#F7931E), rose-destructive (#E11D48)
+   - Dark theme: dark navy bg (#0B1120), card (#131B2E), purple primary, teal accent
+   - Chart colors: purple, teal, amber, sky, rose
+   - Both themes use the same primary/accent brand colors
+2. **Vazirmatn font** (from next/font/google) — replaces Geist as the main font family
+3. **Sunjob-inspired logo**: violet-to-teal gradient on the header icon and hero badge
+4. **Background blobs**: violet-600/teal-500 (was emerald/violet)
+5. **Hero title gradient**: violet-600 → purple-500 → teal-500
+6. **Downloadable HTML** colors also updated to sunjob palette
+7. **masir.faradars.org features added**:
+   - Quick Access section (3 cards): فهرست رشته‌محل‌ها, دانشگاه‌ها, رشته‌های دانشگاهی
+   - Each card has a gradient icon, title, description, and hover effect
+   - راهنمای انتخاب رشته section: 3-step guide (خودشناسی, آشنایی با مشاغل, انتخاب هوشمندانه)
+   - Updated existing info cards with violet/teal colors
+
+## Verification
+- Main page deep-link: tabs show 87/27/515, no errors
+- Colors verified: bg=#0B1120, primary=#7C3AED, accent=#11B7BE, font=Vazirmatn
+- راهنمای انتخاب رشته section present
+- Quick Access cards (فهرست رشته‌محل‌ها, دانشگاه‌ها, رشته‌های دانشگاهی) present
+- ESLint clean, no runtime errors

@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const vazirmatn = Vazirmatn({
+  subsets: ["arabic", "latin"],
+  variable: "--font-vazirmatn",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const geistSans = {
+  variable: "--font-geist-sans",
+  className: "",
+};
 
 export const metadata: Metadata = {
   title: "نرم افزار تخمین رشته قبولی با رتبه کنکور ۱۴۰۵ — نسخه قابل دانلود",
@@ -73,7 +74,8 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`${vazirmatn.variable} antialiased bg-background text-foreground`}
+        style={{ fontFamily: 'var(--font-vazirmatn), sans-serif' }}
       >
         <ThemeProvider
           attribute="class"
