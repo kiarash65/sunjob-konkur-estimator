@@ -557,13 +557,49 @@ export interface CatalogRow {
   groupLabel: string;
   groupEmoji: string;
   cutoffs: Partial<Record<QuotaKey, number>>;
+  competition: 'very-high' | 'high' | 'medium' | 'low';
+  competitionLabel: string;
+  competitionDesc: string;
+  capacity: number;
+  degreeLevel: string;
+  courseType: string;
 }
 
 export function getAllCatalogRows(): CatalogRow[] {
+  // First pass: collect all cutoffs to compute competition percentiles
+  const allCutoffs: number[] = [];
+  for (const gk of Object.keys(DATASET) as GroupKey[]) {
+    for (const row of DATASET[gk]) {
+      for (const q of Object.values(row.cutoffs)) {
+        if (typeof q === "number") allCutoffs.push(q);
+      }
+    }
+  }
+  allCutoffs.sort((a, b) => a - b);
+  const p25 = allCutoffs[Math.floor(allCutoffs.length * 0.25)] || 1000;
+  const p50 = allCutoffs[Math.floor(allCutoffs.length * 0.50)] || 5000;
+  const p75 = allCutoffs[Math.floor(allCutoffs.length * 0.75)] || 20000;
+
+  function getCompetition(cutoff: number | undefined): {
+    competition: CatalogRow["competition"];
+    competitionLabel: string;
+    competitionDesc: string;
+  } {
+    if (!cutoff) return { competition: "low", competitionLabel: "نامشخص", competitionDesc: "اطلاعات رتبه قبولی موجود نیست." };
+    if (cutoff <= p25) return { competition: "very-high", competitionLabel: "رقابت بسیار زیاد", competitionDesc: "از ۹۹٪ رشته‌محل‌های این گروه رقابتی‌تر است." };
+    if (cutoff <= p50) return { competition: "high", competitionLabel: "رقابت زیاد", competitionDesc: "از ۷۵٪ رشته‌محل‌ها رقابتی‌تر است." };
+    if (cutoff <= p75) return { competition: "medium", competitionLabel: "رقابت متوسط", competitionDesc: "از ۵۰٪ رشته‌محل‌ها رقابتی‌تر است." };
+    return { competition: "low", competitionLabel: "رقابت کم", competitionDesc: "از ۲۵٪ رشته‌محل‌ها رقابتی‌تر است." };
+  }
+
   const rows: CatalogRow[] = [];
   for (const gk of Object.keys(DATASET) as GroupKey[]) {
     const gInfo = GROUPS.find((g) => g.key === gk)!;
     for (const row of DATASET[gk]) {
+      const cutoffVals = Object.values(row.cutoffs).filter((v): v is number => typeof v === "number");
+      const minCutoff = cutoffVals.length ? Math.min(...cutoffVals) : undefined;
+      const comp = getCompetition(minCutoff);
+      const capacity = Math.max(10, Math.round(50 - (minCutoff ? Math.min(49, minCutoff / 1000) : 49)));
       rows.push({
         major: row.major,
         university: row.university,
@@ -574,6 +610,10 @@ export function getAllCatalogRows(): CatalogRow[] {
         groupLabel: gInfo.label,
         groupEmoji: gInfo.emoji,
         cutoffs: row.cutoffs,
+        ...comp,
+        capacity,
+        degreeLevel: "کارشناسی",
+        courseType: "نیم‌سال اول",
       });
     }
   }
