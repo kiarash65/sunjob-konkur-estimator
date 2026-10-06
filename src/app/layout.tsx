@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "نرم افزار تخمین رشته قبولی با رتبه کنکور ۱۴۰۵ — نسخه قابل دانلود",
+  title: "سان‌جاب | انتخاب رشته کنکور ۱۴۰۵",
   description:
     "نرم افزار رایگان تخمین رشته قبولی با رتبه کنکور سراسری ۱۴۰۵ — رشته، سهمیه و رتبه خود را وارد کنید تا فهرست پیشنهادهای خوش‌بینانه، منطقی و بدبینانه را ببینید. نسخه HTML آفلاین قابل دانلود.",
   keywords: [
@@ -32,11 +32,11 @@ export const metadata: Metadata = {
   applicationName: "تخمین رشته قبولی با رتبه",
   category: "education",
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
-    shortcut: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
   },
   openGraph: {
-    title: "نرم افزار تخمین رشته قبولی با رتبه کنکور ۱۴۰۵",
+    title: "سان‌جاب | انتخاب رشته کنکور ۱۴۰۵",
     description:
       "گروه آزمایشی، سهمیه و رتبه خود را وارد کنید تا فهرست رشته‌محل‌های پیشنهادی در سه دسته خوش‌بینانه، منطقی و بدبینانه را ببینید. نسخه HTML آفلاین قابل دانلود.",
     type: "website",
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     siteName: "تخمین رشته قبولی با رتبه",
     images: [
       {
-        url: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+        url: "/favicon.png",
         width: 1200,
         height: 630,
         alt: "نرم افزار تخمین رشته قبولی با رتبه کنکور ۱۴۰۵",
@@ -53,10 +53,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "نرم افزار تخمین رشته قبولی با رتبه کنکور ۱۴۰۵",
+    title: "سان‌جاب | انتخاب رشته کنکور ۱۴۰۵",
     description:
       "گروه، سهمیه و رتبه خود را وارد کنید تا فهرست رشته‌محل‌های پیشنهادی را ببینید. نسخه HTML آفلاین قابل دانلود.",
-    images: ["https://z-cdn.chatglm.cn/z-ai/static/logo.svg"],
+    images: ["/favicon.png"],
   },
   robots: {
     index: true,
