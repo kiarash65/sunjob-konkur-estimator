@@ -48,6 +48,7 @@ import {
   Lightbulb,
   Monitor,
   HelpCircle,
+  BookOpen,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -117,6 +118,10 @@ const MajorsView = dynamic(() => import('@/components/konkur/MajorsView'), {
   ssr: false,
   loading: () => <div className="h-[420px] rounded-xl border border-border/60 bg-card/50 animate-pulse" aria-hidden="true" />,
 })
+const GuidesView = dynamic(() => import('@/components/konkur/GuidesView'), {
+  ssr: false,
+  loading: () => <div className="h-[420px] rounded-xl border border-border/60 bg-card/50 animate-pulse" aria-hidden="true" />,
+})
 const FavsPanel = dynamic(() => import('@/components/konkur/FavsPanel'), {
   ssr: false,
 })
@@ -168,7 +173,7 @@ export default function KonkurApp({ appData }: { appData: KonkurAppData }) {
   const [showHistory, setShowHistory] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showShortcutHelp, setShowShortcutHelp] = useState(false)
-  const [activePage, setActivePage] = useState<'estimator' | 'catalog' | 'universities' | 'majors'>('estimator')
+  const [activePage, setActivePage] = useState<'estimator' | 'catalog' | 'universities' | 'majors' | 'guides'>('estimator')
   const [activeGroupTab, setActiveGroupTab] = useState<GroupKey>('riazi')
   const resultRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -600,6 +605,18 @@ export default function KonkurApp({ appData }: { appData: KonkurAppData }) {
           >
             <MapPin className="w-3.5 h-3.5 inline ml-1" />
             رشته‌های دانشگاهی
+          </button>
+          <button
+            onClick={() => setActivePage('guides')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors',
+              activePage === 'guides'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            )}
+          >
+            <BookOpen className="w-3.5 h-3.5 inline ml-1" />
+            راهنماها
           </button>
         </div>
       </header>
@@ -1293,6 +1310,10 @@ export default function KonkurApp({ appData }: { appData: KonkurAppData }) {
 
         {activePage === 'majors' && (
           <MajorsView />
+        )}
+
+        {activePage === 'guides' && (
+          <GuidesView />
         )}
       </main>
 
