@@ -35,10 +35,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.png",
     shortcut: "/favicon.png",
-<<<<<<< HEAD
-=======
     apple: "/sunjob-logo.png",
->>>>>>> 32b509baffa1394e35c991def5e0c8f6947a4c3d
   },
   openGraph: {
     title: "سان‌جاب | انتخاب رشته کنکور ۱۴۰۵",
@@ -49,17 +46,10 @@ export const metadata: Metadata = {
     siteName: "سان‌جاب",
     images: [
       {
-<<<<<<< HEAD
-        url: "/favicon.png",
-        width: 1200,
-        height: 630,
-        alt: "نرم افزار تخمین رشته قبولی با رتبه کنکور ۱۴۰۵",
-=======
         url: "/sunjob-logo.png",
         width: 512,
         height: 512,
         alt: "سان‌جاب",
->>>>>>> 32b509baffa1394e35c991def5e0c8f6947a4c3d
       },
     ],
   },
@@ -67,13 +57,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "سان‌جاب | انتخاب رشته کنکور ۱۴۰۵",
     description:
-<<<<<<< HEAD
-      "گروه، سهمیه و رتبه خود را وارد کنید تا فهرست رشته‌محل‌های پیشنهادی را ببینید. نسخه HTML آفلاین قابل دانلود.",
-    images: ["/favicon.png"],
-=======
       "تخمین رشته قبولی با رتبه کنکور ۱۴۰۵ — سان‌جاب",
     images: ["/sunjob-logo.png"],
->>>>>>> 32b509baffa1394e35c991def5e0c8f6947a4c3d
   },
   robots: {
     index: true,
