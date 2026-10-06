@@ -254,3 +254,43 @@ a:focus-visible {
   }
 }
 
+/* ─── Decorative entrances (replaced framer-motion with pure CSS) ─── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+@keyframes pulseSlow {
+  0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.9; }
+  50% { transform: scale(1.15) translate(20px, -10px); opacity: 1; }
+}
+.anim-fade-in { animation: fadeIn 0.35s ease-out both; }
+.anim-fade-up { animation: fadeUp 0.4s ease-out both; }
+.anim-scale-in { animation: scaleIn 0.25s ease-out both; }
+.animate-pulse-slow { animation: pulseSlow 12s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-in,
+  .anim-fade-up,
+  .anim-scale-in {
+    animation: none !important;
+  }
+}
+
+/* Custom scrollbar (deduplicated: was previously injected inline per row) */
+.custom-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+

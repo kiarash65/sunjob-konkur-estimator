@@ -11,36 +11,33 @@ const vazirmatn = Vazirmatn({
   display: "swap",
 });
 
-const geistSans = {
-  variable: "--font-geist-sans",
-  className: "",
-};
-
 export const metadata: Metadata = {
-  title: "سان‌جاب | انتخاب رشته کنکور ۱۴۰۵",
+  title: "تخمین رشته‌محل قبولی کنکور ۱۴۰۵ با رتبه | سان‌جاب",
   description:
-    "سان‌جاب — نرم افزار رایگان تخمین رشته قبولی با رتبه کنکور سراسری ۱۴۰۵. گروه، سهمیه و رتبه خود را وارد کنید تا فهرست رشته‌محل‌های پیشنهادی را در سه دسته خوش‌بینانه، منطقی و بدبینانه ببینید.",
+    "سان‌جاب — نرم افزار رایگان تخمین رشته‌محل قبولی با رتبه کنکور سراسری ۱۴۰۵. گروه، سهمیه و رتبه خود را وارد کنید تا فهرست رشته‌محل‌های پیشنهادی را در سه دسته خوش‌بینانه، منطقی و بدبینانه ببینید.",
   keywords: [
-    "سان‌جاب",
-    "sunjob",
+    "تخمین رشته‌محل قبولی",
+    "تخمین قبولی کنکور",
     "تخمین رشته قبولی با رتبه",
     "نرم افزار تخمین رشته",
     "کنکور سراسری ۱۴۰۵",
     "انتخاب رشته",
     "رتبه کنکور",
+    "سان‌جاب",
   ],
   authors: [{ name: "سان‌جاب" }],
   applicationName: "سان‌جاب",
   category: "education",
+  metadataBase: new URL("https://konkur.sunjob.ir"),
   icons: {
     icon: "/favicon.png",
     shortcut: "/favicon.png",
     apple: "/sunjob-logo.png",
   },
   openGraph: {
-    title: "سان‌جاب | انتخاب رشته کنکور ۱۴۰۵",
+    title: "تخمین رشته‌محل قبولی کنکور ۱۴۰۵ با رتبه | سان‌جاب",
     description:
-      "سان‌جاب — تخمین رشته قبولی با رتبه کنکور سراسری ۱۴۰۵. گروه، سهمیه و رتبه خود را وارد کنید.",
+      "سان‌جاب — تخمین رشته‌محل قبولی با رتبه کنکور سراسری ۱۴۰۵. گروه، سهمیه و رتبه خود را وارد کنید.",
     type: "website",
     locale: "fa_IR",
     siteName: "سان‌جاب",
@@ -55,16 +52,14 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "سان‌جاب | انتخاب رشته کنکور ۱۴۰۵",
-    description:
-      "تخمین رشته قبولی با رتبه کنکور ۱۴۰۵ — سان‌جاب",
+    title: "تخمین رشته‌محل قبولی کنکور ۱۴۰۵ با رتبه | سان‌جاب",
+    description: "تخمین رشته‌محل قبولی با رتبه کنکور ۱۴۰۵ — سان‌جاب",
     images: ["/sunjob-logo.png"],
   },
   robots: {
     index: true,
     follow: true,
   },
-  manifest: undefined,
 };
 
 export default function RootLayout({
