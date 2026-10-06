@@ -928,3 +928,82 @@ User reported that the bucketing logic was backwards:
   - خوش‌بینانه = dream/reach choices (rank worse than cutoff) — "I'm optimistic I'll get in"
   - منطقی = realistic choices (rank near cutoff)
   - بدبینانه = safe choices (rank better than cutoff) — "I'm pessimistic so I pick safe options"
+
+---
+Task ID: 13
+Agent: main (user-requested redesign)
+Task: Redesign with sunjob.ir color palette + add masir.faradars.org features
+
+## Changes applied
+1. **Sunjob.ir color palette** in globals.css:
+   - Light theme: cream background (#FFFBF5), dark navy text (#1A2744), purple primary (#7C3AED), teal accent (#11B7BE), amber (#F7931E), rose-destructive (#E11D48)
+   - Dark theme: dark navy bg (#0B1120), card (#131B2E), purple primary, teal accent
+   - Chart colors: purple, teal, amber, sky, rose
+   - Both themes use the same primary/accent brand colors
+2. **Vazirmatn font** (from next/font/google) — replaces Geist as the main font family
+3. **Sunjob-inspired logo**: violet-to-teal gradient on the header icon and hero badge
+4. **Background blobs**: violet-600/teal-500 (was emerald/violet)
+5. **Hero title gradient**: violet-600 → purple-500 → teal-500
+6. **Downloadable HTML** colors also updated to sunjob palette
+7. **masir.faradars.org features added**:
+   - Quick Access section (3 cards): فهرست رشته‌محل‌ها, دانشگاه‌ها, رشته‌های دانشگاهی
+   - Each card has a gradient icon, title, description, and hover effect
+   - راهنمای انتخاب رشته section: 3-step guide (خودشناسی, آشنایی با مشاغل, انتخاب هوشمندانه)
+   - Updated existing info cards with violet/teal colors
+
+## Verification
+- Main page deep-link: tabs show 87/27/515, no errors
+- Colors verified: bg=#0B1120, primary=#7C3AED, accent=#11B7BE, font=Vazirmatn
+- راهنمای انتخاب رشته section present
+- Quick Access cards (فهرست رشته‌محل‌ها, دانشگاه‌ها, رشته‌های دانشگاهی) present
+- ESLint clean, no runtime errors
+
+---
+Task ID: 14
+Agent: main (user-requested masir features)
+Task: Actually implement masir.faradars.org features (catalog, universities, majors views)
+
+## Problem
+User pointed out that the previous "masir features" were just text cards, not actual functional features like masir.faradars.org has.
+
+## Implementation
+Added 3 new functional views with navigation tabs:
+
+1. **Navigation bar** (below header):
+   - 4 tabs: تخمین رتبه | فهرست رشته‌محل‌ها | دانشگاه‌ها | رشته‌های دانشگاهی
+   - Active tab highlighted with primary color
+   - Quick-access cards now clickable → navigate to respective view
+
+2. **فهرست رشته‌محل‌ها (CatalogView)**:
+   - Full searchable/filterable table of ALL major×university combos from the dataset
+   - Filters: text search, group filter, university type filter, sort (by major/university/cutoff-asc/cutoff-desc)
+   - Table columns: group, major, university, city, type, region1 cutoff, region2 cutoff, region3 cutoff
+   - "Load more" button (50 rows at a time) for performance with 1444+ entries
+   - Results count display
+
+3. **دانشگاه‌ها (UniversitiesView)**:
+   - Card-grid listing of all unique universities (273 universities from real data)
+   - Each card shows: name, city, type badge, major count, group badges, cutoff range
+   - Filters: text search (name/city), type filter
+   - 2-column responsive grid
+
+4. **رشته‌های دانشگاهی (MajorsView)**:
+   - Card-grid listing of all unique majors (116 majors from real data)
+   - Each card shows: name, group+emoji, university count, city count, cutoff range
+   - Shows city names for majors available in ≤5 cities
+   - Filters: text search (name), group filter
+   - 2-column responsive grid
+
+## Helper functions added to konkur-data.ts:
+- `getAllUniversities()` — returns UniversityInfo[] with name, type, city, majorCount, groupKeys, minCutoff, maxCutoff
+- `getAllMajors()` — returns MajorInfo[] with name, group, universityCount, universities, cities, minCutoff, maxCutoff
+- `getAllCatalogRows()` — returns CatalogRow[] with all major×university rows + cutoffs
+
+## Verification
+- Navigation: 4 tabs visible (تخمین رتبه, فهرست رشته‌محل‌ها, دانشگاه‌ها, رشته‌های دانشگاهی)
+- Catalog: table with 50 rows (of 1444+), search/filter/sort all functional
+- Universities: 273 university cards with search/filter
+- Majors: 116 major cards with search/filter
+- Quick-access cards clickable → navigate to respective view
+- Returning to estimator shows form correctly
+- ESLint clean, no runtime errors

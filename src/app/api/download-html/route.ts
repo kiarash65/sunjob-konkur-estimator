@@ -50,33 +50,40 @@ export async function GET(req: NextRequest) {
 <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
 <style>
   :root {
-    --bg: #0b1220;
-    --bg-soft: #111a2e;
-    --card: #131c34;
-    --card-2: #16213e;
-    --border: #24324f;
-    --text: #e6eefc;
-    --text-soft: #b3c0d8;
-    --muted: #8190ad;
-    --primary: #10b981;
-    --primary-2: #14b8a6;
-    --gold: #f59e0b;
-    --gold-2: #fbbf24;
-    --red: #ef4444;
-    --blue: #6366f1;
+    /* Sunjob-inspired dark palette */
+    --bg: #0B1120;
+    --bg-soft: #131B2E;
+    --card: #131B2E;
+    --card-2: #1A2744;
+    --border: #2D3F5E;
+    --text: #F3F0ED;
+    --text-soft: #8B95A8;
+    --muted: #8B95A8;
+    --primary: #7C3AED;
+    --primary-2: #11B7BE;
+    --gold: #F7931E;
+    --gold-2: #FBBF24;
+    --red: #E11D48;
+    --blue: #0EA5E9;
     --shadow: 0 10px 30px -10px rgba(0,0,0,.6);
     --radius: 16px;
   }
-  /* Light theme overrides */
+  /* Light theme overrides — Sunjob-inspired light palette */
   html[data-theme="light"] {
-    --bg: #f8fafc;
-    --bg-soft: #f1f5f9;
-    --card: #ffffff;
-    --card-2: #f8fafc;
-    --border: #e2e8f0;
-    --text: #0f172a;
+    --bg: #FFFBF5;
+    --bg-soft: #F3F0ED;
+    --card: #FFFFFF;
+    --card-2: #F8FAFC;
+    --border: #E5E7EB;
+    --text: #1A2744;
     --text-soft: #475569;
-    --muted: #64748b;
+    --muted: #6B7280;
+    --primary: #7C3AED;
+    --primary-2: #11B7BE;
+    --gold: #F7931E;
+    --gold-2: #FBBF24;
+    --red: #E11D48;
+    --blue: #0EA5E9;
     --shadow: 0 10px 30px -10px rgba(0,0,0,.15);
   }
   html[data-theme="light"] body {

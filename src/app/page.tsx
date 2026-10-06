@@ -133,17 +133,14 @@ import {
   resultToJSON,
   computeDetailedStats,
   type DetailedStats,
+  getAllUniversities,
+  getAllMajors,
+  getAllCatalogRows,
+  type UniversityInfo,
+  type MajorInfo,
+  type CatalogRow,
   toPersianDigits,
 } from '@/lib/konkur-data'
-import {
-  GUIDES,
-  FIELD_CATEGORIES,
-  UNI_TYPE_CATEGORIES,
-  MAJOR_DESCRIPTIONS,
-  getMajorDescription,
-  type GuideItem,
-  type FieldCategory,
-} from '@/lib/masir-content'
 
 interface ApiResponse {
   ok: boolean
@@ -243,10 +240,8 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showShortcutHelp, setShowShortcutHelp] = useState(false)
-  const [activePage, setActivePage] = useState<'estimator' | 'catalog' | 'universities' | 'majors' | 'guides'>('estimator')
+  const [activePage, setActivePage] = useState<'estimator' | 'catalog' | 'universities' | 'majors'>('estimator')
   const [activeGroupTab, setActiveGroupTab] = useState<GroupKey>('riazi')
-  const [selectedGuideSlug, setSelectedGuideSlug] = useState<string>('')
-  const [selectedMajorName, setSelectedMajorName] = useState<string>('')
   const resultRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -496,6 +491,22 @@ export default function Home() {
     window.print()
   }, [])
 
+  // Get popular majors for a group — masir style
+  const allCatalogData = useMemo(() => getAllCatalogRows(), [])
+  function getPopularMajors(gk: GroupKey): { university: string; major: string; percent: number }[] {
+    const rows = allCatalogData.filter((r) => r.group === gk)
+    // Sort by lowest cutoff (= hardest to get in = most popular)
+    const sorted = rows
+      .filter((r) => r.cutoffs.region1 !== undefined)
+      .sort((a, b) => (a.cutoffs.region1 ?? 999999) - (b.cutoffs.region1 ?? 999999))
+    const total = sorted.length || 1
+    return sorted.slice(0, 10).map((r, i) => ({
+      university: r.university,
+      major: r.major,
+      percent: Math.round(((total - i) / total) * 100),
+    }))
+  }
+
   const isDark = theme === 'dark'
 
   return (
@@ -505,8 +516,8 @@ export default function Home() {
 
       {/* Decorative background blobs */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-40 -right-32 w-[520px] h-[520px] rounded-full bg-emerald-500/15 dark:bg-emerald-500/10 blur-3xl animate-pulse-slow" />
-        <div className="absolute top-32 -left-40 w-[480px] h-[480px] rounded-full bg-violet-500/15 dark:bg-violet-500/10 blur-3xl animate-pulse-slow" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute -top-40 -right-32 w-[520px] h-[520px] rounded-full bg-teal-500/15 dark:bg-teal-500/10 blur-3xl animate-pulse-slow" />
+        <div className="absolute top-32 -left-40 w-[480px] h-[480px] rounded-full bg-teal-500/15 dark:bg-teal-500/10 blur-3xl animate-pulse-slow" style={{ animationDelay: '1.5s' }} />
         <div className="absolute bottom-20 right-1/3 w-[360px] h-[360px] rounded-full bg-amber-500/10 dark:bg-amber-500/5 blur-3xl animate-pulse-slow" style={{ animationDelay: '0.7s' }} />
       </div>
 
@@ -528,14 +539,14 @@ export default function Home() {
             className="flex items-center gap-3"
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl blur-md opacity-60 animate-pulse" />
-              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                <GraduationCap className="w-6 h-6 text-white" />
+              <div className="absolute inset-0 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl blur-md opacity-60 animate-pulse" />
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/30 overflow-hidden">
+                <img src="/sunjob-logo.png" alt="سان‌جاب" className="w-7 h-7 object-contain" />
               </div>
             </div>
             <div className="leading-tight">
-              <p className="font-extrabold text-base sm:text-lg">تخمین رشته قبولی با رتبه</p>
-              <p className="text-xs text-muted-foreground">کنکور سراسری ۱۴۰۵ — نسخه قابل دانلود</p>
+              <p className="font-extrabold text-base sm:text-lg">سان‌جاب</p>
+              <p className="text-xs text-muted-foreground">کشف، تجربه، انتخاب</p>
             </div>
           </motion.div>
           <div className="flex items-center gap-1.5">
@@ -569,7 +580,7 @@ export default function Home() {
               <History className="w-4 h-4" />
               <span className="hidden md:inline me-1">تاریخچه</span>
               {mounted && history.length > 0 && (
-                <span className="absolute -top-1 -left-1 min-w-4 h-4 px-1 text-[10px] font-bold bg-emerald-500 text-white rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -left-1 min-w-4 h-4 px-1 text-[10px] font-bold bg-teal-500 text-white rounded-full flex items-center justify-center">
                   {fa(history.length)}
                 </span>
               )}
@@ -613,7 +624,7 @@ export default function Home() {
                 >
                   <Sun className="w-4 h-4" />
                   <span className="flex-1">روشن</span>
-                  {mounted && theme === 'light' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                  {mounted && theme === 'light' && <CheckCircle2 className="w-3 h-3 text-teal-500" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setTheme('dark')}
@@ -621,7 +632,7 @@ export default function Home() {
                 >
                   <Moon className="w-4 h-4" />
                   <span className="flex-1">تاریک</span>
-                  {mounted && theme === 'dark' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                  {mounted && theme === 'dark' && <CheckCircle2 className="w-3 h-3 text-teal-500" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setTheme('system')}
@@ -629,7 +640,7 @@ export default function Home() {
                 >
                   <Monitor className="w-4 h-4" />
                   <span className="flex-1">سیستم</span>
-                  {mounted && theme === 'system' && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                  {mounted && theme === 'system' && <CheckCircle2 className="w-3 h-3 text-teal-500" />}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -644,51 +655,267 @@ export default function Home() {
             </Button>
           </div>
         </div>
+        {/* Navigation bar */}
+        <div className="container mx-auto max-w-6xl px-4 pb-2 flex items-center gap-1 overflow-x-auto">
+          <button
+            onClick={() => setActivePage('estimator')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors',
+              activePage === 'estimator'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            )}
+          >
+            <Calculator className="w-3.5 h-3.5 inline ml-1" />
+            تخمین رتبه
+          </button>
+          <button
+            onClick={() => setActivePage('catalog')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors',
+              activePage === 'catalog'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            )}
+          >
+            <ListChecks className="w-3.5 h-3.5 inline ml-1" />
+            فهرست رشته‌محل‌ها
+          </button>
+          <button
+            onClick={() => setActivePage('universities')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors',
+              activePage === 'universities'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            )}
+          >
+            <GraduationCap className="w-3.5 h-3.5 inline ml-1" />
+            دانشگاه‌ها
+          </button>
+          <button
+            onClick={() => setActivePage('majors')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors',
+              activePage === 'majors'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+            )}
+          >
+            <MapPinIcon className="w-3.5 h-3.5 inline ml-1" />
+            رشته‌های دانشگاهی
+          </button>
+        </div>
       </header>
 
-      {/* Navigation bar — masir.faradars.org style */}
-      <div className="border-b border-border/40 bg-background/50 sticky top-[57px] z-30 backdrop-blur-sm">
-        <div className="container mx-auto max-w-6xl px-4 flex items-center gap-1 overflow-x-auto py-2">
-          <button onClick={() => setActivePage('estimator')} className={cn('px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors', activePage === 'estimator' ? 'bg-[#0EA5A0] text-white' : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5')}><Calculator className="w-3.5 h-3.5 inline ml-1" />تخمین رتبه</button>
-          <button onClick={() => setActivePage('catalog')} className={cn('px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors', activePage === 'catalog' ? 'bg-[#0EA5A0] text-white' : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5')}><ListChecks className="w-3.5 h-3.5 inline ml-1" />فهرست رشته‌محل‌ها</button>
-          <button onClick={() => setActivePage('universities')} className={cn('px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors', activePage === 'universities' ? 'bg-[#0EA5A0] text-white' : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5')}><GraduationCap className="w-3.5 h-3.5 inline ml-1" />دانشگاه‌ها</button>
-          <button onClick={() => setActivePage('majors')} className={cn('px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors', activePage === 'majors' ? 'bg-[#0EA5A0] text-white' : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5')}><MapPinIcon className="w-3.5 h-3.5 inline ml-1" />رشته‌های دانشگاهی</button>
-          <button onClick={() => setActivePage('guides')} className={cn('px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors', activePage === 'guides' ? 'bg-[#0EA5A0] text-white' : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5')}><Lightbulb className="w-3.5 h-3.5 inline ml-1" />راهنمای انتخاب رشته</button>
+      {/* Hero — masir.faradars.org style */}
+      <section className="relative overflow-hidden pt-16 pb-12 lg:pt-24 lg:pb-16">
+        {/* Background blobs — sunjob style */}
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute -top-20 right-10 w-[400px] h-[400px] rounded-full bg-[#0EA5A0]/12 blur-3xl" />
+          <div className="absolute top-40 left-10 w-[350px] h-[350px] rounded-full bg-[#F7931E]/8 blur-3xl" />
         </div>
-      </div>
-
-      {/* Hero — only on estimator page */}
-      <section className="relative">
-        <div className="container mx-auto max-w-6xl px-4 pt-10 pb-6 text-center">
+        <div className="container mx-auto max-w-4xl px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Badge
-              variant="outline"
-              className="mb-3 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
-            >
-              <Sparkles className="w-3.5 h-3.5 me-1.5" /> نرم افزار رایگان تخمین رشته قبولی
-            </Badge>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-emerald-500 via-teal-500 to-violet-500 bg-clip-text text-transparent leading-tight">
-              تخمین رشته قبولی با رتبه کنکور ۱۴۰۵
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0EA5A0]/10 text-[#0EA5A0] text-xs font-bold mb-4">
+              ۱۰۰٪ رایگان
+            </div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-[#1A2744] leading-tight mb-4">
+              با شناخت بیشتر انتخاب رشته کنید
             </h1>
-            <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-3xl mx-auto leading-8">
-              گروه آزمایشی، سهمیه و رتبه خود را وارد کنید تا فهرستی از رشته‌محل‌های پیشنهادی را در سه دسته{' '}
-              <span className="text-emerald-500 font-semibold">خوش‌بینانه</span>،{' '}
-              <span className="text-amber-500 font-semibold">منطقی</span> و{' '}
-              <span className="text-rose-500 font-semibold">بدبینانه</span> مشاهده کنید.
-              داده‌ها بر اساس کارنامه قبولی سال گذشته و با خطای تخمینی کمتر از ۵٪ تنظیم شده‌اند.
+            <ul className="text-sm text-muted-foreground max-w-2xl mx-auto space-y-1.5 mb-6 text-right inline-block">
+              <li className="flex items-center gap-2"><span className="text-[#0EA5A0]">✓</span> همه رشته‌محل‌ها را یکجا ببینید و در آن‌ها جستوجو کنید.</li>
+              <li className="flex items-center gap-2"><span className="text-[#0EA5A0]">✓</span> فهرستی متناسب با علاقه و شرایط خودتان بسازید.</li>
+              <li className="flex items-center gap-2"><span className="text-[#0EA5A0]">✓</span> ترتیب انتخاب‌ها را خودتان تعیین کنید و فهرست را در سامانه ثبت کنید.</li>
+            </ul>
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-4">
+              <Button
+                onClick={() => {
+                  setActivePage('estimator')
+                  setTimeout(() => document.getElementById('rankInput')?.focus(), 100)
+                }}
+                className="bg-[#0EA5A0] hover:bg-[#0EA5A0]/90 text-white px-6 h-11"
+              >
+                شروع انتخاب رشته
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setActivePage('catalog')}
+                className="border-[#0EA5A0]/30 text-[#0EA5A0] hover:bg-[#0EA5A0]/5 px-6 h-11"
+              >
+                مشاهده رشته‌محل‌ها
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              بدون ثبت‌نام و فقط با وارد کردن رتبه خود شروع کنید.
             </p>
           </motion.div>
         </div>
       </section>
 
+      {/* Stats bar — masir style */}
+      <section className="border-y border-border/40 bg-[#F3F0ED]/30 py-8">
+        <div className="container mx-auto max-w-4xl px-4">
+          <h2 className="text-center text-base font-bold text-[#1A2744] mb-2">
+            رشته‌محل‌های دفترچه‌های رسمی را یکجا جستوجو کنید
+          </h2>
+          <p className="text-center text-xs text-muted-foreground mb-6 max-w-xl mx-auto">
+            سان‌جاب اطلاعات دفترچه‌های رسمی پذیرش ۱۴۰۵ را یکجا گردآوری کرده است تا بتوانید همه گزینه‌هایتان را کنار هم ببینید و با هم مقایسه کنید.
+          </p>
+          <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#0EA5A0]">{faFmt(getAllCatalogRows().length)}</div>
+              <div className="text-[11px] text-muted-foreground mt-1">رشته‌محل قابل جستوجو</div>
+            </div>
+            <div className="text-center border-x border-border/40">
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#0EA5A0]">{faFmt(getAllUniversities().length)}</div>
+              <div className="text-[11px] text-muted-foreground mt-1">دانشگاه و مرکز آموزش عالی</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#0EA5A0]">{faFmt(getAllMajors().length)}</div>
+              <div className="text-[11px] text-muted-foreground mt-1">رشته تحصیلی</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Popular majors — masir style */}
+      <section className="py-10">
+        <div className="container mx-auto max-w-4xl px-4">
+          <h2 className="text-center text-base font-bold text-[#1A2744] mb-2">
+            پرطرفدارترین رشته‌ها و دانشگاه‌ها در هر گروه آزمایشی
+          </h2>
+          <p className="text-center text-xs text-muted-foreground mb-6 max-w-xl mx-auto">
+            بیشترین تقاضا برای رشته‌محل‌های هر گروه آزمایشی بر اساس داده‌های پذیرش سال‌های گذشته.
+          </p>
+          <div className="flex items-center justify-center gap-1 mb-6 flex-wrap">
+            {GROUPS.map((g) => (
+              <button
+                key={g.key}
+                onClick={() => setActiveGroupTab(g.key)}
+                className={cn(
+                  'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
+                  activeGroupTab === g.key
+                    ? 'bg-[#0EA5A0] text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                )}
+              >
+                {g.emoji} {g.label}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            {getPopularMajors(activeGroupTab).map((item, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border/40 hover:border-[#0EA5A0]/30 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-bold text-[#1A2744]">{item.university}</span>
+                    <span className="text-muted-foreground">— {item.major}</span>
+                  </div>
+                </div>
+                <div className="shrink-0 text-left">
+                  <span className="text-sm font-bold text-[#0EA5A0]">{fa(item.percent)}٪</span>
+                  <span className="text-[10px] text-muted-foreground ms-1">از متقاضیان</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Know before you choose — masir style */}
+      <section className="py-10 bg-[#F3F0ED]/30">
+        <div className="container mx-auto max-w-4xl px-4">
+          <h2 className="text-center text-base font-bold text-[#1A2744] mb-2">
+            رشته‌ها و دانشگاه‌ها را پیش از انتخاب بشناسید
+          </h2>
+          <p className="text-center text-xs text-muted-foreground mb-6">
+            پیش از تصمیم‌گیری، معرفی رشته‌ها، اطلاعات دانشگاه‌ها و راهنماهای انتخاب رشته را هم بخوانید.
+          </p>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-[#1A2744] mb-2">رشته‌های دانشگاهی</h3>
+              <p className="text-xs text-muted-foreground mb-3">معرفی {faFmt(getAllMajors().length)} رشته تحصیلی</p>
+              <ul className="space-y-1.5">
+                {getAllMajors().slice(0, 5).map((m, i) => (
+                  <li key={i}>
+                    <button
+                      onClick={() => setActivePage('majors')}
+                      className="text-xs text-[#0EA5A0] hover:underline"
+                    >
+                      {m.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => setActivePage('majors')} className="text-xs text-[#0EA5A0] font-medium hover:underline mt-2">
+                مشاهده همه رشته‌ها ←
+              </button>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#1A2744] mb-2">دانشگاه‌ها</h3>
+              <p className="text-xs text-muted-foreground mb-3">معرفی {faFmt(getAllUniversities().length)} دانشگاه و مرکز آموزشی</p>
+              <ul className="space-y-1.5">
+                {getAllUniversities().slice(0, 5).map((u, i) => (
+                  <li key={i}>
+                    <button
+                      onClick={() => setActivePage('universities')}
+                      className="text-xs text-[#0EA5A0] hover:underline"
+                    >
+                      {u.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => setActivePage('universities')} className="text-xs text-[#0EA5A0] font-medium hover:underline mt-2">
+                مشاهده همه دانشگاه‌ها ←
+              </button>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#1A2744] mb-2">راهنمای انتخاب رشته</h3>
+              <p className="text-xs text-muted-foreground mb-3">راهنمای کامل انتخاب رشته</p>
+              <ul className="space-y-1.5">
+                <li><span className="text-xs text-[#0EA5A0] hover:underline cursor-pointer">سهمیه‌ها و پذیرش بومی</span></li>
+                <li><span className="text-xs text-[#0EA5A0] hover:underline cursor-pointer">ارزیابی دانشگاه</span></li>
+                <li><span className="text-xs text-[#0EA5A0] hover:underline cursor-pointer">نقش خانواده و مشاور</span></li>
+                <li><span className="text-xs text-[#0EA5A0] hover:underline cursor-pointer">رشته، دانشگاه یا شهر؟</span></li>
+                <li><span className="text-xs text-[#0EA5A0] hover:underline cursor-pointer">خواندن دفترچه انتخاب رشته</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA — masir style */}
+      <section className="py-10">
+        <div className="container mx-auto max-w-2xl px-4 text-center">
+          <h2 className="text-base font-bold text-[#1A2744] mb-2">آماده‌اید فهرستتان را بسازید؟</h2>
+          <p className="text-xs text-muted-foreground mb-4">رتبه خود را وارد کنید تا اولین فهرست پیشنهادی‌تان آماده شود.</p>
+          <Button
+            onClick={() => {
+              setActivePage('estimator')
+              setTimeout(() => document.getElementById('rankInput')?.focus(), 100)
+            }}
+            className="bg-[#0EA5A0] hover:bg-[#0EA5A0]/90 text-white px-6 h-11"
+          >
+            شروع انتخاب رشته
+          </Button>
+        </div>
+      </section>
+
       <main id="main-content" className="container mx-auto max-w-6xl px-4 pb-24 flex-1 scroll-mt-20" tabIndex={-1}>
+        {activePage === 'estimator' && (
+        <>
         {/* Print-only header — shows the form context in printed/PDF output */}
         <div className="hidden print:block mb-4 pb-4 border-b-2 border-black">
-          <h1 className="text-2xl font-bold">تخمین رشته قبولی با رتبه کنکور ۱۴۰۵</h1>
+          <h1 className="text-2xl font-bold">سان‌جاب — انتخاب رشته کنکور ۱۴۰۵</h1>
           <p className="text-sm mt-1">
             گروه: <strong>{GROUPS.find((g) => g.key === group)?.label ?? group}</strong> — سهمیه:{' '}
             <strong>{QUOTAS.find((q) => q.key === quota)?.label ?? quota}</strong> — رتبه:{' '}
@@ -700,10 +927,10 @@ export default function Home() {
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Form */}
           <div className="lg:col-span-2">
-            <Card className="lg:sticky lg:top-24 border-border/60 shadow-xl shadow-emerald-500/5 backdrop-blur-sm bg-card/95 print:hidden">
+            <Card className="lg:sticky lg:top-24 border-border/60 shadow-xl shadow-teal-500/5 backdrop-blur-sm bg-card/95 print:hidden">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Calculator className="w-5 h-5 text-emerald-500" />
+                  <Calculator className="w-5 h-5 text-teal-500" />
                   مشخصات داوطلب
                 </CardTitle>
                 <CardDescription>
@@ -840,7 +1067,7 @@ export default function Home() {
                     <motion.div
                       initial={{ opacity: 0, y: -5 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-sm bg-emerald-500/10 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded-lg px-3 py-2"
+                      className="text-sm bg-teal-500/10 border border-teal-500/40 text-teal-600 dark:text-teal-400 rounded-lg px-3 py-2"
                     >
                       {shareToast}
                     </motion.div>
@@ -930,12 +1157,102 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        {/* Info & FAQ */}
+        {/* Quick Access */}
         <section className="mt-12 grid md:grid-cols-3 gap-4 print:hidden">
-          <Card className="border-border/60 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 transition-all">
+          <Card onClick={() => setActivePage('catalog')} className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all group cursor-pointer">
+            <CardHeader>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center mb-2 transition-transform group-hover:scale-110">
+                <ListChecks className="w-6 h-6 text-white" />
+              </div>
+              <CardTitle className="text-base">فهرست رشته‌محل‌ها</CardTitle>
+              <CardDescription>جستجو، مقایسه و اولویت‌بندی</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground leading-7">
+                فهرست کامل رشته‌محل‌های کنکور سراسری ۱۴۰۵ را مرور کنید. با فیلتر گروه آزمایشی، سهمیه و دانشگاه رشته‌محل‌های مرتبط را ببینید و فهرست انتخاب رشته‌تان را آگاهانه بچینید.
+              </p>
+            </CardContent>
+          </Card>
+          <Card onClick={() => setActivePage('universities')} className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all group cursor-pointer">
+            <CardHeader>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center mb-2 transition-transform group-hover:scale-110">
+                <GraduationCap className="w-6 h-6 text-white" />
+              </div>
+              <CardTitle className="text-base">دانشگاه‌ها</CardTitle>
+              <CardDescription>معرفی دانشگاه‌های سراسری</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground leading-7">
+                فهرست کامل دانشگاه‌های دولتی، آزاد، پیام نور، غیرانتفاعی، علمی کاربردی و فرهنگیان را مرور کنید. اطلاعات هر دانشگاه از جمله شهر، نوع و رشته‌های موجود را ببینید.
+              </p>
+            </CardContent>
+          </Card>
+          <Card onClick={() => setActivePage('majors')} className="border-border/60 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all group cursor-pointer">
+            <CardHeader>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mb-2 transition-transform group-hover:scale-110">
+                <MapPin className="w-6 h-6 text-white" />
+              </div>
+              <CardTitle className="text-base">رشته‌های دانشگاهی</CardTitle>
+              <CardDescription>معرفی رشته‌های تحصیلی</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground leading-7">
+                معرفی کامل رشته‌های تحصیلی در ۵ گروه آزمایشی (ریاضی، تجربی، انسانی، هنر، زبان). برای هر رشته بازار کار، ادامه تحصیل و دانشگاه‌های دارای آن رشته را ببینید.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Guide */}
+        <section className="mt-6 print:hidden">
+          <Card className="border-teal-500/30 bg-gradient-to-br from-teal-500/5 via-card to-card overflow-hidden">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <ListChecks className="w-4 h-4 text-emerald-500" />
+                <Lightbulb className="w-4 h-4 text-teal-500" />
+                راهنمای انتخاب رشته
+              </CardTitle>
+              <CardDescription>نکات کلیدی برای انتخاب رشته آگاهانه</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-bold">
+                    <span className="w-6 h-6 rounded-full bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xs">۱</span>
+                    <span>خودشناسی</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-6">
+                    قبل از انتخاب رشته، علایق، استعدادها و ارزش‌های شخصی خود را بشناسید. تست‌های روان‌شناسی شغلی مانند هالند (RIASEC) می‌توانند کمک‌کننده باشند.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-bold">
+                    <span className="w-6 h-6 rounded-full bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xs">۲</span>
+                    <span>آشنایی با مشاغل</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-6">
+                    بازار کار، درآمد و آینده هر رشته را بررسی کنید. واقعیت‌های بازار کار ایران را در نظر بگیرید و از مشاوران متخصص کمک بگیرید.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-bold">
+                    <span className="w-6 h-6 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs">۳</span>
+                    <span>انتخاب هوشمندانه</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-6">
+                    انتخاب رشته را در سه دسته خوش‌بینانه (رویایی)، منطقی و بدبینانه (امن) قرار دهید. حداقل ۲۴ انتخاب در لیست خود داشته باشید.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Info & FAQ */}
+        <section className="mt-6 grid md:grid-cols-3 gap-4 print:hidden">
+          <Card className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ListChecks className="w-4 h-4 text-teal-500" />
                 ۵ گروه آزمایشی
               </CardTitle>
             </CardHeader>
@@ -945,10 +1262,10 @@ export default function Home() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-border/60 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10 transition-all">
+          <Card className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-amber-500" />
+                <MapPin className="w-4 h-4 text-teal-500" />
                 ۵ نوع سهمیه
               </CardTitle>
             </CardHeader>
@@ -958,10 +1275,10 @@ export default function Home() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-border/60 hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/10 transition-all">
+          <Card className="border-border/60 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/10 transition-all">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <GraduationCap className="w-4 h-4 text-violet-500" />
+                <GraduationCap className="w-4 h-4 text-teal-500" />
                 ۶ نوع دانشگاه
               </CardTitle>
             </CardHeader>
@@ -1030,6 +1347,20 @@ export default function Home() {
             </CardContent>
           </Card>
         </section>
+        </>
+        )}
+
+        {activePage === 'catalog' && (
+          <CatalogView />
+        )}
+
+        {activePage === 'universities' && (
+          <UniversitiesView />
+        )}
+
+        {activePage === 'majors' && (
+          <MajorsView />
+        )}
       </main>
 
       {/* Keyboard shortcut help dialog */}
@@ -1055,7 +1386,7 @@ export default function Home() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 id="shortcut-help-title" className="text-base font-bold flex items-center gap-2">
-                  <Keyboard className="w-4 h-4 text-emerald-500" />
+                  <Keyboard className="w-4 h-4 text-teal-500" />
                   میانبرهای صفحه‌کلید
                 </h3>
                 <Button variant="ghost" size="icon" aria-label="بستن" onClick={() => setShowShortcutHelp(false)}>
@@ -1088,12 +1419,6 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Other pages */}
-      {activePage === 'catalog' && <CatalogView />}
-      {activePage === 'universities' && <UniversitiesView />}
-      {activePage === 'majors' && <MajorsView />}
-      {activePage === 'guides' && <GuidesView />}
-
       <Footer />
     </div>
   )
@@ -1119,9 +1444,9 @@ function EmptyState({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-          className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/15 to-teal-500/15 flex items-center justify-center mb-4"
+          className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500/15 to-teal-500/15 flex items-center justify-center mb-4"
         >
-          <Sparkles className="w-8 h-8 text-emerald-500" />
+          <Sparkles className="w-8 h-8 text-teal-500" />
         </motion.div>
         <h3 className="text-lg font-bold mb-2">هنوز تخمینی ساخته نشده</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto leading-7">
@@ -1135,17 +1460,17 @@ function EmptyState({
               key={ex.label}
               type="button"
               onClick={() => onQuickStart(ex.g, ex.q, ex.r)}
-              className="group flex items-center gap-2 p-3 rounded-lg border border-border/60 bg-background/50 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all text-right"
+              className="group flex items-center gap-2 p-3 rounded-lg border border-border/60 bg-background/50 hover:border-teal-500/40 hover:bg-teal-500/5 transition-all text-right"
               aria-label={`شروع سریع با ${ex.label}`}
             >
               <span className="text-xl shrink-0">{ex.emoji}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold leading-5 group-hover:text-emerald-500 transition-colors">
+                <p className="text-xs font-bold leading-5 group-hover:text-teal-500 transition-colors">
                   {ex.label}
                 </p>
                 <p className="text-[10px] text-muted-foreground">{ex.desc}</p>
               </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground rotate-90 group-hover:text-emerald-500 transition-all shrink-0" />
+              <ChevronDown className="w-4 h-4 text-muted-foreground rotate-90 group-hover:text-teal-500 transition-all shrink-0" />
             </button>
           ))}
         </div>
@@ -1424,7 +1749,7 @@ function ResultView({
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card overflow-hidden">
+      <Card className="border-teal-500/30 bg-gradient-to-br from-teal-500/5 via-card to-card overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
@@ -1457,7 +1782,7 @@ function ResultView({
               icon={<ListChecks className="w-4 h-4" />}
               value={result.summary.reachableCount > 0 ? <CountUp target={result.summary.reachableCount} /> : '—'}
               label="انتخاب در دسترس"
-              color="text-emerald-500"
+              color="text-teal-500"
               delay={0}
             />
             <Stat
@@ -1471,7 +1796,7 @@ function ResultView({
               icon={<Award className="w-4 h-4" />}
               value={best ? <><CountUp target={best.chance} />٪</> : '—'}
               label="بیشترین شانس"
-              color="text-violet-500"
+              color="text-teal-500"
               delay={0.1}
             />
           </div>
@@ -1639,9 +1964,9 @@ function ResultView({
                 onChange={(e) => setMinChance(Number(e.target.value))}
                 aria-label="حداقل درصد شانس قبولی"
                 aria-valuetext={`حداقل شانس: ${fa(minChance)} درصد`}
-                className="w-20 accent-emerald-500"
+                className="w-20 accent-teal-500"
               />
-              <span className="text-xs font-mono font-bold w-7 text-center text-emerald-500">
+              <span className="text-xs font-mono font-bold w-7 text-center text-teal-500">
                 {fa(minChance)}
               </span>
             </div>
@@ -1805,7 +2130,7 @@ function ResultView({
               </span>
               <button
                 onClick={resetFilters}
-                className="text-emerald-500 hover:text-emerald-400 inline-flex items-center gap-1"
+                className="text-teal-500 hover:text-teal-400 inline-flex items-center gap-1"
               >
                 <RotateCcw className="w-3 h-3" /> پاک کردن همه
               </button>
@@ -1849,7 +2174,7 @@ function ResultView({
                 value={minChance}
                 onChange={(e) => setMinChance(Number(e.target.value))}
                 aria-label="حداقل درصد شانس قبولی"
-                className="w-full accent-emerald-500"
+                className="w-full accent-teal-500"
               />
             </div>
             <div className="space-y-2">
@@ -1863,7 +2188,7 @@ function ResultView({
                     className={cn(
                       'text-xs px-3 py-2 rounded-md border transition-colors text-right',
                       uniTypeFilter.has(t)
-                        ? 'bg-emerald-500/15 border-emerald-500/50 text-foreground'
+                        ? 'bg-teal-500/15 border-teal-500/50 text-foreground'
                         : 'bg-background/50 border-border/60 text-muted-foreground'
                     )}
                   >
@@ -1926,7 +2251,7 @@ function ResultView({
       {view === 'tabs' && (
         <Tabs defaultValue="optimistic" className="w-full">
           <TabsList className="grid grid-cols-3 w-full h-auto">
-            <TabsTrigger value="optimistic" className="flex flex-col gap-1 py-2 data-[state=active]:text-emerald-500">
+            <TabsTrigger value="optimistic" className="flex flex-col gap-1 py-2 data-[state=active]:text-teal-500">
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" /> خوش‌بینانه
               </span>
@@ -1949,7 +2274,7 @@ function ResultView({
           <TabsContent value="optimistic" className="mt-3">
             <BucketList
               rows={filteredRows.filter((r) => r.bucket === 'optimistic')}
-              tone="emerald"
+              tone="teal"
               emptyText="موردی در دسته خوش‌بینانه یافت نشد."
               onToggleFav={(r) => onToggleFav(r, group, quota, result.rank)}
               isFav={(r) => isFav(rowKey(r, group, quota))}
@@ -1979,7 +2304,7 @@ function ResultView({
       {view === 'all' && (
         <BucketList
           rows={filteredRows}
-          tone="emerald"
+          tone="teal"
           emptyText="موردی با فیلتر فعلی یافت نشد."
           onToggleFav={(r) => onToggleFav(r, group, quota, result.rank)}
           isFav={(r) => isFav(rowKey(r, group, quota))}
@@ -1991,7 +2316,7 @@ function ResultView({
         <Card className="border-border/60">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <TableIcon className="w-4 h-4 text-emerald-500" />
+              <TableIcon className="w-4 h-4 text-teal-500" />
               تحلیل توزیع شانس قبولی
             </CardTitle>
             <CardDescription>
@@ -2158,7 +2483,7 @@ function CompareView({
     <Card className="border-border/60">
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <GitCompare className="w-4 h-4 text-emerald-500" />
+          <GitCompare className="w-4 h-4 text-teal-500" />
           مقایسه رتبه‌ها
         </CardTitle>
         <CardDescription>
@@ -2239,7 +2564,7 @@ function CompareView({
                   const isBetter = m.betterIsHigher ? diff > 0 : diff < 0
                   const isWorse = m.betterIsHigher ? diff < 0 : diff > 0
                   const diffColor = isBetter
-                    ? 'text-emerald-500'
+                    ? 'text-teal-500'
                     : isWorse
                       ? 'text-rose-500'
                       : 'text-muted-foreground'
@@ -2308,7 +2633,7 @@ function PriorityListView({
   const strategyMeta = {
     safe: {
       label: 'خوش‌بینانه (رویایی)',
-      tone: 'emerald',
+      tone: 'teal',
       desc: '۸ انتخاب رویایی با شانس پایین — امیدوارانه در ابتدای لیست',
       icon: <CheckCircle2 className="w-4 h-4" />,
     },
@@ -2328,11 +2653,11 @@ function PriorityListView({
 
   return (
     <div className="space-y-4">
-      <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card">
+      <Card className="border-teal-500/30 bg-gradient-to-br from-teal-500/5 via-card to-card">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-500 flex items-center justify-center shadow-lg shadow-teal-500/30">
                 <Wand2 className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -2350,8 +2675,8 @@ function PriorityListView({
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-            <Lightbulb className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-teal-500/5 border border-teal-500/20">
+            <Lightbulb className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground leading-6">
               این لیست بر اساس استراتژی استاندارد <strong className="text-foreground">۳ دسته ۸ تایی</strong> پیشنهاد می‌شود:
               ۸ انتخاب امن، ۸ انتخاب منطقی و ۸ انتخاب شانس. مجموعاً{' '}
@@ -2367,14 +2692,14 @@ function PriorityListView({
         const items = priorityList[strategy]
         if (items.length === 0) return null
         const toneClass =
-          meta.tone === 'emerald'
-            ? 'border-emerald-500/30 from-emerald-500/5'
+          meta.tone === 'teal'
+            ? 'border-teal-500/30 from-teal-500/5'
             : meta.tone === 'amber'
               ? 'border-amber-500/30 from-amber-500/5'
               : 'border-rose-500/30 from-rose-500/5'
         const textTone =
-          meta.tone === 'emerald'
-            ? 'text-emerald-500'
+          meta.tone === 'teal'
+            ? 'text-teal-500'
             : meta.tone === 'amber'
               ? 'text-amber-500'
               : 'text-rose-500'
@@ -2427,13 +2752,13 @@ function PriorityRow({
   item: PriorityList['items'][number]
   onToggleFav: (r: EstimatedRow) => void
   isFav: (r: EstimatedRow) => boolean
-  strategyTone: 'emerald' | 'amber' | 'rose'
+  strategyTone: 'teal' | 'amber' | 'rose'
 }) {
   const chanceColor =
-    item.chance >= 70 ? 'text-emerald-500' : item.chance >= 40 ? 'text-amber-500' : 'text-rose-500'
+    item.chance >= 70 ? 'text-teal-500' : item.chance >= 40 ? 'text-amber-500' : 'text-rose-500'
   const chanceBg =
-    strategyTone === 'emerald'
-      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+    strategyTone === 'teal'
+      ? 'bg-teal-500/10 border-teal-500/30 text-teal-500'
       : strategyTone === 'amber'
         ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
         : 'bg-rose-500/10 border-rose-500/30 text-rose-500'
@@ -2567,7 +2892,7 @@ function StatisticsCard({
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const tierColorMap = {
-    excellent: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
+    excellent: 'text-teal-500 bg-teal-500/10 border-teal-500/30',
     good: 'text-teal-500 bg-teal-500/10 border-teal-500/30',
     fair: 'text-amber-500 bg-amber-500/10 border-amber-500/30',
     challenging: 'text-orange-500 bg-orange-500/10 border-orange-500/30',
@@ -2580,7 +2905,7 @@ function StatisticsCard({
   const percentileForBar = stats.userPercentile
   const percentileColor =
     percentileForBar < 20
-      ? 'from-emerald-500 to-teal-400'
+      ? 'from-teal-500 to-cyan-400'
       : percentileForBar < 50
         ? 'from-teal-500 to-amber-400'
         : percentileForBar < 80
@@ -2598,12 +2923,12 @@ function StatisticsCard({
   ]
 
   return (
-    <Card className="border-border/60 bg-gradient-to-br from-violet-500/5 via-card to-card overflow-hidden">
+    <Card className="border-border/60 bg-gradient-to-br from-teal-500/5 via-card to-card overflow-hidden">
       <CardHeader className="pb-3 cursor-pointer select-none" onClick={() => setCollapsed((c) => !c)} role="button" tabIndex={0} aria-expanded={!collapsed} aria-controls="stats-card-body">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-violet-500/15 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-violet-500" />
+            <div className="w-9 h-9 rounded-lg bg-teal-500/15 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-teal-500" />
             </div>
             <div>
               <CardTitle className="text-base flex items-center gap-2">
@@ -2654,7 +2979,7 @@ function StatisticsCard({
             <span className="text-xs text-muted-foreground">
               جایگاه شما نسبت به سایر رشته‌محل‌ها
             </span>
-            <span className="text-sm font-bold text-violet-500 tabular-nums">
+            <span className="text-sm font-bold text-teal-500 tabular-nums">
               صدک: {fa(stats.userPercentile)}٪
             </span>
           </div>
@@ -2695,7 +3020,7 @@ function StatisticsCard({
 
         {/* Reach vs out-of-reach summary */}
         <div className="mt-3 flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-emerald-500 border-emerald-500/30">
+          <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-teal-500 border-teal-500/30">
             <CheckCircle2 className="w-3 h-3 ms-1" />
             {fa(stats.reachableCount)} رشته‌محل در دسترس
           </Badge>
@@ -2721,7 +3046,7 @@ function BucketList({
   showBucketBadge = false,
 }: {
   rows: EstimatedRow[]
-  tone: 'emerald' | 'amber' | 'rose'
+  tone: 'teal' | 'amber' | 'rose'
   emptyText: string
   onToggleFav: (r: EstimatedRow) => void
   isFav: (r: EstimatedRow) => boolean
@@ -2729,11 +3054,11 @@ function BucketList({
 }) {
   const [expandAll, setExpandAll] = useState<boolean | null>(null)
   const toneClasses =
-    tone === 'emerald'
-      ? 'from-emerald-500/15'
+    tone === 'teal'
+      ? 'from-teal-500/15'
       : tone === 'amber'
-        ? 'from-amber-500/15'
-        : 'from-rose-500/15'
+        ? 'from-orange-500/15'
+        : 'from-red-500/15'
   if (rows.length === 0) {
     return (
       <Card className="border-dashed border-2 border-border/60 bg-card/40">
@@ -2816,10 +3141,10 @@ function RowItem({
   }
   const chance = row.chance
   const chanceColor =
-    chance >= 70 ? 'text-emerald-500' : chance >= 40 ? 'text-amber-500' : 'text-rose-500'
+    chance >= 70 ? 'text-teal-500' : chance >= 40 ? 'text-amber-500' : 'text-rose-500'
   const chanceGradient =
     chance >= 70
-      ? 'from-emerald-500 to-teal-400'
+      ? 'from-teal-500 to-cyan-400'
       : chance >= 40
         ? 'from-amber-500 to-amber-400'
         : 'from-rose-500 to-rose-400'
@@ -2832,7 +3157,7 @@ function RowItem({
         : 'بدبینانه'
   const bucketTone =
     row.bucket === 'optimistic'
-      ? 'text-emerald-500 border-emerald-500/30'
+      ? 'text-teal-500 border-teal-500/30'
       : row.bucket === 'realistic'
         ? 'text-amber-500 border-amber-500/30'
         : 'text-rose-500 border-rose-500/30'
@@ -2901,7 +3226,7 @@ function RowItem({
               آخرین رتبه قبولی: <span className="font-mono me-0.5">{faFmt(row.cutoff)}</span>
             </Badge>
             {row.rankDistance > 0 && (
-              <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-emerald-500 border-emerald-500/30">
+              <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-teal-500 border-teal-500/30">
                 اختلاف شما با آخرین رتبه: {faFmt(Math.abs(row.rankDistance))} بهتر
               </Badge>
             )}
@@ -2975,7 +3300,7 @@ function RowItem({
               <div className="p-2 rounded-md bg-foreground/[0.03]">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px] text-muted-foreground">مقایسه با آخرین رتبه قبولی</span>
-                  <span className={cn('text-[11px] font-bold tabular-nums', rankRatio > 0 ? 'text-emerald-500' : rankRatio < 0 ? 'text-rose-500' : 'text-muted-foreground')}>
+                  <span className={cn('text-[11px] font-bold tabular-nums', rankRatio > 0 ? 'text-teal-500' : rankRatio < 0 ? 'text-rose-500' : 'text-muted-foreground')}>
                     {rankRatio > 0 ? '+' : ''}{fa(Math.round(Math.abs(rankRatio)))}٪
                   </span>
                 </div>
@@ -2986,7 +3311,7 @@ function RowItem({
                   <div
                     className={cn(
                       'absolute top-0 bottom-0 rounded-full',
-                      rankRatio > 0 ? 'bg-emerald-500' : 'bg-rose-500'
+                      rankRatio > 0 ? 'bg-teal-500' : 'bg-rose-500'
                     )}
                     style={{
                       // Bar fills from center towards right (better) or left (worse)
@@ -3095,7 +3420,7 @@ function FavsPanel({
                       className={cn(
                         'text-xl font-extrabold tabular-nums',
                         f.chance >= 70
-                          ? 'text-emerald-500'
+                          ? 'text-teal-500'
                           : f.chance >= 40
                             ? 'text-amber-500'
                             : 'text-rose-500'
@@ -3130,12 +3455,12 @@ function HistoryPanel({
 }) {
   // Already stored newest-first; no extra sort needed
   return (
-    <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card">
+    <Card className="border-teal-500/30 bg-gradient-to-br from-teal-500/5 via-card to-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-emerald-500" />
+            <div className="w-9 h-9 rounded-lg bg-teal-500/15 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-teal-500" />
             </div>
             <div>
               <CardTitle className="text-base">تاریخچه جستجوها ({fa(history.length)})</CardTitle>
@@ -3180,7 +3505,7 @@ function HistoryPanel({
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-base">{g?.emoji}</span>
-                        <p className="font-bold text-sm leading-6 flex-1 truncate group-hover:text-emerald-500 transition-colors">
+                        <p className="font-bold text-sm leading-6 flex-1 truncate group-hover:text-teal-500 transition-colors">
                           {g?.label} — {q?.label}
                         </p>
                       </div>
@@ -3191,7 +3516,7 @@ function HistoryPanel({
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                           {faFmt(h.totalChoices)} رشته‌محل
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-emerald-500 border-emerald-500/30">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-teal-500 border-teal-500/30">
                           {faFmt(h.reachableCount)} انتخاب در دسترس
                         </Badge>
                       </div>
@@ -3224,9 +3549,10 @@ function CatalogView() {
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState<GroupKey | 'all'>('all')
   const [uniTypeFilter, setUniTypeFilter] = useState<UniversityType | 'all'>('all')
+  const [competitionFilter, setCompetitionFilter] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'major' | 'university' | 'cutoff-asc' | 'cutoff-desc'>('major')
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize] = useState(50)
+  const [pageSize, setPageSize] = useState(50)
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
 
   const filtered = useMemo(() => {
@@ -3234,7 +3560,11 @@ function CatalogView() {
     let rows = allRows.filter((r) => {
       if (groupFilter !== 'all' && r.group !== groupFilter) return false
       if (uniTypeFilter !== 'all' && r.universityType !== uniTypeFilter) return false
-      if (q) { const hay = (r.major + ' ' + r.university + ' ' + (r.city || '')).toLowerCase(); if (!hay.includes(q)) return false }
+      if (competitionFilter !== 'all' && r.competition !== competitionFilter) return false
+      if (q) {
+        const hay = (r.major + ' ' + r.university + ' ' + (r.city || '')).toLowerCase()
+        if (!hay.includes(q)) return false
+      }
       return true
     })
     rows = [...rows]
@@ -3245,62 +3575,215 @@ function CatalogView() {
       case 'cutoff-desc': rows.sort((a, b) => (b.cutoffs.region1 ?? 0) - (a.cutoffs.region1 ?? 0)); break
     }
     return rows
-  }, [allRows, search, groupFilter, uniTypeFilter, sortBy])
+  }, [allRows, search, groupFilter, uniTypeFilter, competitionFilter, sortBy])
 
   const totalPages = Math.ceil(filtered.length / pageSize)
+  const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  // Clamp current page if it exceeds total after filtering
   const effectivePage = Math.min(currentPage, totalPages || 1)
-  const pageRows = filtered.slice((effectivePage - 1) * pageSize, effectivePage * pageSize)
-  const compColors: Record<string, string> = { 'very-high': 'text-rose-500 bg-rose-500/10 border-rose-500/30', 'high': 'text-orange-500 bg-orange-500/10 border-orange-500/30', 'medium': 'text-amber-500 bg-amber-500/10 border-amber-500/30', 'low': 'text-teal-500 bg-teal-500/10 border-teal-500/30' }
+
+  const competitionColors = {
+    'very-high': 'text-rose-500 bg-rose-500/10 border-rose-500/30',
+    'high': 'text-orange-500 bg-orange-500/10 border-orange-500/30',
+    'medium': 'text-amber-500 bg-amber-500/10 border-amber-500/30',
+    'low': 'text-teal-500 bg-teal-500/10 border-teal-500/30',
+  }
 
   return (
-    <div className="space-y-4 mt-6">
+    <div className="space-y-4">
+      {/* Stats bar */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="text-center p-3 rounded-lg border border-border/60 bg-card/50"><div className="text-xl font-bold text-[#0EA5A0]">{faFmt(allRows.length)}</div><div className="text-[11px] text-muted-foreground">رشته‌محل</div></div>
-        <div className="text-center p-3 rounded-lg border border-border/60 bg-card/50"><div className="text-xl font-bold text-[#0EA5A0]">{faFmt(new Set(allRows.map(r => r.university)).size)}</div><div className="text-[11px] text-muted-foreground">دانشگاه</div></div>
-        <div className="text-center p-3 rounded-lg border border-border/60 bg-card/50"><div className="text-xl font-bold text-[#0EA5A0]">{faFmt(new Set(allRows.map(r => r.major)).size)}</div><div className="text-[11px] text-muted-foreground">رشته</div></div>
+        <div className="text-center p-3 rounded-lg border border-border/60 bg-card/50">
+          <div className="text-xl font-bold text-teal-500">{faFmt(allRows.length)}</div>
+          <div className="text-[11px] text-muted-foreground">رشته‌محل</div>
+        </div>
+        <div className="text-center p-3 rounded-lg border border-border/60 bg-card/50">
+          <div className="text-xl font-bold text-teal-500">{faFmt(new Set(allRows.map(r => r.university)).size)}</div>
+          <div className="text-[11px] text-muted-foreground">دانشگاه</div>
+        </div>
+        <div className="text-center p-3 rounded-lg border border-border/60 bg-card/50">
+          <div className="text-xl font-bold text-amber-500">{faFmt(new Set(allRows.map(r => r.major)).size)}</div>
+          <div className="text-[11px] text-muted-foreground">رشته</div>
+        </div>
       </div>
+
       <Card className="border-border/60">
-        <CardHeader><CardTitle className="text-base">فهرست رشته‌محل‌ها</CardTitle><CardDescription>جستجو، مقایسه و اولویت‌بندی رشته‌محل‌های کنکور سراسری ۱۴۰۵</CardDescription></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ListChecks className="w-4 h-4 text-teal-500" />
+            فهرست رشته‌محل‌ها
+          </CardTitle>
+          <CardDescription>
+            جستجو، مقایسه و اولویت‌بندی رشته‌محل‌های کنکور سراسری ۱۴۰۵
+          </CardDescription>
+        </CardHeader>
         <CardContent>
+          {/* Filters */}
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <div className="relative flex-1 min-w-[200px]"><Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" /><Input type="search" value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }} placeholder="جستجوی رشته، دانشگاه یا شهر..." aria-label="جستجو" className="pr-9 h-9" /></div>
-            <Select value={groupFilter} onValueChange={(v) => { setGroupFilter(v as GroupKey | 'all'); setCurrentPage(1) }}><SelectTrigger className="h-9 w-[120px] text-xs" aria-label="فیلتر گروه"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">همه گروه‌ها</SelectItem>{GROUPS.map((g) => <SelectItem key={g.key} value={g.key}>{g.emoji} {g.label}</SelectItem>)}</SelectContent></Select>
-            <Select value={uniTypeFilter} onValueChange={(v) => { setUniTypeFilter(v as UniversityType | 'all'); setCurrentPage(1) }}><SelectTrigger className="h-9 w-[130px] text-xs" aria-label="فیلتر نوع"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">همه انواع</SelectItem>{Object.entries(UNIVERSITY_TYPE_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select>
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}><SelectTrigger className="h-9 w-[130px] text-xs" aria-label="مرتب‌سازی"><ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground ms-1" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="major">نام رشته</SelectItem><SelectItem value="university">نام دانشگاه</SelectItem><SelectItem value="cutoff-asc">سخت‌ترین ورود</SelectItem><SelectItem value="cutoff-desc">آسان‌ترین ورود</SelectItem></SelectContent></Select>
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="جستجوی رشته، دانشگاه یا شهر..."
+                aria-label="جستجو"
+                className="pr-9 h-9"
+              />
+            </div>
+            <Select value={groupFilter} onValueChange={(v) => setGroupFilter(v as GroupKey | 'all')}>
+              <SelectTrigger className="h-9 w-[120px] text-xs" aria-label="فیلتر گروه">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه گروه‌ها</SelectItem>
+                {GROUPS.map((g) => (
+                  <SelectItem key={g.key} value={g.key}>{g.emoji} {g.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={uniTypeFilter} onValueChange={(v) => setUniTypeFilter(v as UniversityType | 'all')}>
+              <SelectTrigger className="h-9 w-[130px] text-xs" aria-label="فیلتر نوع دانشگاه">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه انواع</SelectItem>
+                {Object.entries(UNIVERSITY_TYPE_LABEL).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={competitionFilter} onValueChange={setCompetitionFilter}>
+              <SelectTrigger className="h-9 w-[130px] text-xs" aria-label="فیلتر رقابت">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه سطوح رقابت</SelectItem>
+                <SelectItem value="very-high">رقابت بسیار زیاد</SelectItem>
+                <SelectItem value="high">رقابت زیاد</SelectItem>
+                <SelectItem value="medium">رقابت متوسط</SelectItem>
+                <SelectItem value="low">رقابت کم</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="h-9 w-[130px] text-xs" aria-label="مرتب‌سازی">
+                <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground ms-1" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="major">نام رشته</SelectItem>
+                <SelectItem value="university">نام دانشگاه</SelectItem>
+                <SelectItem value="cutoff-asc">سخت‌ترین ورود</SelectItem>
+                <SelectItem value="cutoff-desc">آسان‌ترین ورود</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="flex items-center justify-between mb-3"><span className="text-xs text-muted-foreground"><strong className="text-foreground">{faFmt(filtered.length)}</strong> رشته‌محل</span></div>
+
+          {/* Results count */}
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs text-muted-foreground">
+              <strong className="text-foreground">{faFmt(filtered.length)}</strong> رشته‌محل
+            </span>
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+              <SelectTrigger className="h-7 w-[100px] text-xs" aria-label="تعداد در صفحه">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="25">۲۵ در صفحه</SelectItem>
+                <SelectItem value="50">۵۰ در صفحه</SelectItem>
+                <SelectItem value="100">۱۰۰ در صفحه</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Table */}
           <div className="overflow-x-auto custom-scroll">
             <table className="w-full text-sm border-collapse">
-              <thead><tr className="border-b border-border/60">
-                <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">گروه</th><th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">رشته</th><th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium hidden sm:table-cell">دانشگاه</th><th className="text-center py-2 px-2 text-xs text-muted-foreground font-medium">رقابت</th><th className="text-center py-2 px-2 text-xs text-muted-foreground font-medium">رتبه ۱</th><th className="text-center py-2 px-2 text-xs text-muted-foreground font-medium">جزئیات</th>
-              </tr></thead>
+              <thead>
+                <tr className="border-b border-border/60">
+                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">گروه</th>
+                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">رشته</th>
+                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium hidden sm:table-cell">دانشگاه</th>
+                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium hidden md:table-cell">شهر</th>
+                  <th className="text-center py-2 px-2 text-xs text-muted-foreground font-medium">رقابت</th>
+                  <th className="text-center py-2 px-2 text-xs text-muted-foreground font-medium">رتبه ۱</th>
+                  <th className="text-center py-2 px-2 text-xs text-muted-foreground font-medium">جزئیات</th>
+                </tr>
+              </thead>
               <tbody>
                 {pageRows.map((r, i) => {
-                  const rowIdx = (effectivePage - 1) * pageSize + i
+                  const rowIdx = (currentPage - 1) * pageSize + i
                   const isExpanded = expandedRow === rowIdx
                   return (
                     <React.Fragment key={rowIdx}>
-                      <tr className={cn('border-b border-border/40 hover:bg-foreground/[0.02] cursor-pointer', isExpanded && 'bg-foreground/[0.03]')} onClick={() => setExpandedRow(isExpanded ? null : rowIdx)}>
+                      <tr
+                        className={cn('border-b border-border/40 hover:bg-foreground/[0.02] cursor-pointer', isExpanded && 'bg-foreground/[0.03]')}
+                        onClick={() => setExpandedRow(isExpanded ? null : rowIdx)}
+                      >
                         <td className="py-2 px-2 text-xs whitespace-nowrap">{r.groupEmoji} {r.groupLabel}</td>
                         <td className="py-2 px-2 text-xs font-medium">{r.major}</td>
                         <td className="py-2 px-2 text-xs hidden sm:table-cell">{r.university}</td>
-                        <td className="py-2 px-2 text-center"><span className={cn('text-[10px] px-2 py-0.5 rounded-full border inline-block whitespace-nowrap', compColors[r.competition] || '')}>{r.competitionLabel}</span></td>
+                        <td className="py-2 px-2 text-xs text-muted-foreground hidden md:table-cell">{r.city || '—'}</td>
+                        <td className="py-2 px-2 text-center">
+                          <span className={cn('text-[10px] px-2 py-0.5 rounded-full border inline-block whitespace-nowrap', competitionColors[r.competition])}>
+                            {r.competitionLabel}
+                          </span>
+                        </td>
                         <td className="text-center py-2 px-2 text-xs font-mono tabular-nums">{r.cutoffs.region1 ? faFmt(r.cutoffs.region1) : '—'}</td>
-                        <td className="text-center py-2 px-2"><button onClick={(e) => { e.stopPropagation(); setExpandedRow(isExpanded ? null : rowIdx) }} className="text-[10px] text-[#0EA5A0] hover:text-[#0EA5A0]/70">{isExpanded ? '▲ بستن' : '▼ جزئیات'}</button></td>
+                        <td className="text-center py-2 px-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setExpandedRow(isExpanded ? null : rowIdx) }}
+                            className="text-[10px] text-teal-500 hover:text-teal-400"
+                            aria-label={isExpanded ? 'بستن جزئیات' : 'مشاهده جزئیات'}
+                          >
+                            {isExpanded ? '▲ بستن' : '▼ جزئیات'}
+                          </button>
+                        </td>
                       </tr>
                       {isExpanded && (
-                        <tr className="bg-foreground/[0.02]"><td colSpan={6} className="p-4">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                            <div><div className="text-muted-foreground mb-1">دانشگاه</div><div className="font-medium">{r.university}</div></div>
-                            <div><div className="text-muted-foreground mb-1">شهر</div><div className="font-medium">{r.city || '—'}</div></div>
-                            <div><div className="text-muted-foreground mb-1">نوع</div><div className="font-medium">{r.universityTypeLabel}</div></div>
-                            <div><div className="text-muted-foreground mb-1">سطح رقابت</div><div className="font-medium">{r.competitionLabel}</div><div className="text-[10px] text-muted-foreground mt-0.5">{r.competitionDesc}</div></div>
-                            <div><div className="text-muted-foreground mb-1">رتبه منطقه ۱</div><div className="font-mono font-bold">{r.cutoffs.region1 ? faFmt(r.cutoffs.region1) : '—'}</div></div>
-                            <div><div className="text-muted-foreground mb-1">رتبه منطقه ۲</div><div className="font-mono font-bold">{r.cutoffs.region2 ? faFmt(r.cutoffs.region2) : '—'}</div></div>
-                            <div><div className="text-muted-foreground mb-1">رتبه منطقه ۳</div><div className="font-mono font-bold">{r.cutoffs.region3 ? faFmt(r.cutoffs.region3) : '—'}</div></div>
-                            <div><div className="text-muted-foreground mb-1">ظرفیت تخمینی</div><div className="font-medium">{fa(r.capacity)} نفر</div></div>
-                          </div>
-                        </td></tr>
+                        <tr className="bg-foreground/[0.02]">
+                          <td colSpan={7} className="p-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                              <div>
+                                <div className="text-muted-foreground mb-1">دانشگاه</div>
+                                <div className="font-medium">{r.university}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground mb-1">شهر</div>
+                                <div className="font-medium">{r.city || '—'}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground mb-1">نوع دانشگاه</div>
+                                <div className="font-medium">{r.universityTypeLabel}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground mb-1">مقطع</div>
+                                <div className="font-medium">{r.degreeLevel} — {r.courseType}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground mb-1">ظرفیت تخمینی</div>
+                                <div className="font-medium">{fa(r.capacity)} نفر</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground mb-1">سطح رقابت</div>
+                                <div className="font-medium">{r.competitionLabel}</div>
+                                <div className="text-[10px] text-muted-foreground mt-0.5">{r.competitionDesc}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground mb-1">رتبه قبولی منطقه ۱</div>
+                                <div className="font-mono font-bold">{r.cutoffs.region1 ? faFmt(r.cutoffs.region1) : '—'}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground mb-1">رتبه قبولی منطقه ۲</div>
+                                <div className="font-mono font-bold">{r.cutoffs.region2 ? faFmt(r.cutoffs.region2) : '—'}</div>
+                              </div>
+                              <div>
+                                <div className="text-muted-foreground mb-1">رتبه قبولی منطقه ۳</div>
+                                <div className="font-mono font-bold">{r.cutoffs.region3 ? faFmt(r.cutoffs.region3) : '—'}</div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
                       )}
                     </React.Fragment>
                   )
@@ -3308,17 +3791,77 @@ function CatalogView() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-1 mt-4 flex-wrap">
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={effectivePage === 1} onClick={() => setCurrentPage(1)}>اول</Button>
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={effectivePage === 1} onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>قبلی</Button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => { const start = Math.max(1, effectivePage - 2); const pageNum = start + i; if (pageNum > totalPages) return null; return <Button key={pageNum} variant={pageNum === effectivePage ? 'default' : 'outline'} size="sm" className="h-7 w-7 p-0 text-xs" onClick={() => setCurrentPage(pageNum)}>{fa(pageNum)}</Button> })}
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={effectivePage === totalPages} onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}>بعدی</Button>
-              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={effectivePage === totalPages} onClick={() => setCurrentPage(totalPages)}>آخر</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(1)}
+              >
+                اول
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                قبلی
+              </Button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const start = Math.max(1, currentPage - 2)
+                const pageNum = start + i
+                if (pageNum > totalPages) return null
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={pageNum === currentPage ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 w-7 p-0 text-xs"
+                    onClick={() => setCurrentPage(pageNum)}
+                  >
+                    {fa(pageNum)}
+                  </Button>
+                )
+              })}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >
+                بعدی
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(totalPages)}
+              >
+                آخر
+              </Button>
             </div>
           )}
-          {filtered.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">موردی یافت نشد.</div>}
-          <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/40"><p className="text-[11px] text-muted-foreground leading-5"><strong>اعتبار داده‌ها:</strong> داده‌ها از دفترچه‌های رسمی پذیرش استخراج شده و ممکن است ناقص یا قدیمی باشد. برآورد «رقابت در پذیرش» از ویژگی‌های خود رشته‌محل ساخته می‌شود.</p></div>
+
+          {filtered.length === 0 && (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              موردی با فیلترهای انتخاب‌شده یافت نشد.
+            </div>
+          )}
+
+          {/* Disclaimer */}
+          <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/40">
+            <p className="text-[11px] text-muted-foreground leading-5">
+              <strong>اعتبار داده‌ها:</strong> داده‌های این ابزار از دفترچه‌های رسمی پذیرش استخراج شده و ممکن است ناقص، قدیمی یا نادرست باشد. برآورد «رقابت در پذیرش» از ویژگی‌های خود رشته‌محل ساخته می‌شود و به رتبه قبولی سال‌های گذشته یا شانس قبولی شما ربطی ندارد.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -3335,55 +3878,92 @@ function UniversitiesView() {
     const q = search.trim().toLowerCase()
     return unis.filter((u) => {
       if (typeFilter !== 'all' && u.type !== typeFilter) return false
-      if (q) { const hay = (u.name + ' ' + (u.city || '')).toLowerCase(); if (!hay.includes(q)) return false }
+      if (q) {
+        const hay = (u.name + ' ' + (u.city || '')).toLowerCase()
+        if (!hay.includes(q)) return false
+      }
       return true
     })
   }, [unis, search, typeFilter])
 
-  // Group by type
-  const grouped = useMemo(() => {
-    const map = new Map<string, typeof filtered>()
-    for (const u of filtered) {
-      const key = u.type
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(u)
-    }
-    return map
-  }, [filtered])
-
   return (
-    <div className="space-y-4 mt-6">
+    <div className="space-y-4">
       <Card className="border-border/60">
-        <CardHeader><CardTitle className="text-base">دانشگاه‌ها</CardTitle><CardDescription>فهرست {fa(unis.length)} دانشگاه و مرکز آموزش عالی</CardDescription></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-teal-500" />
+            دانشگاه‌ها
+          </CardTitle>
+          <CardDescription>
+            فهرست {fa(unis.length)} دانشگاه در دیتابیس کنکور سراسری ۱۴۰۵
+          </CardDescription>
+        </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <div className="relative flex-1 min-w-[200px]"><Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" /><Input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جستجوی نام دانشگاه یا شهر..." aria-label="جستجو" className="pr-9 h-9" /></div>
-            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as UniversityType | 'all')}><SelectTrigger className="h-9 w-[140px] text-xs" aria-label="فیلتر نوع"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">همه انواع</SelectItem>{Object.entries(UNIVERSITY_TYPE_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select>
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="جستجوی نام دانشگاه یا شهر..."
+                aria-label="جستجو"
+                className="pr-9 h-9"
+              />
+            </div>
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as UniversityType | 'all')}>
+              <SelectTrigger className="h-9 w-[140px] text-xs" aria-label="فیلتر نوع">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه انواع</SelectItem>
+                {Object.entries(UNIVERSITY_TYPE_LABEL).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="text-xs text-muted-foreground mb-3">{fa(filtered.length)} دانشگاه</div>
-          {UNI_TYPE_CATEGORIES.map((cat) => {
-            const items = grouped.get(cat.id as UniversityType) || []
-            if (items.length === 0) return null
-            return (
-              <div key={cat.id} className="mb-6">
-                <h2 className="text-sm font-bold text-[#1A2744] mb-1">{cat.title}</h2>
-                <p className="text-xs text-muted-foreground mb-3">{cat.description}</p>
-                <div className="grid sm:grid-cols-2 gap-2">
-                  {items.map((u, i) => (
-                    <div key={i} className="p-3 rounded-lg border border-border/60 bg-card/50 hover:border-[#0EA5A0]/30 transition-colors">
-                      <div className="flex items-start justify-between gap-2"><div className="flex-1 min-w-0"><p className="font-bold text-sm leading-6">{u.name}</p><p className="text-xs text-muted-foreground">{u.city || '—'}</p></div><Badge variant="secondary" className="text-[9px] px-1.5 py-0 shrink-0">{u.typeLabel}</Badge></div>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        <Badge variant="outline" className="text-[9px] px-1.5 py-0">{fa(u.majorCount)} رشته‌محل</Badge>
-                        {u.groupKeys.map((gk) => { const g = GROUPS.find((g) => g.key === gk)!; return <Badge key={gk} variant="outline" className="text-[9px] px-1.5 py-0">{g.emoji} {g.label}</Badge> })}
-                        {u.minCutoff < Infinity && <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">رتبه: {faFmt(u.minCutoff)}–{faFmt(u.maxCutoff)}</Badge>}
-                      </div>
-                    </div>
-                  ))}
+
+          <div className="text-xs text-muted-foreground mb-3">
+            {fa(filtered.length)} دانشگاه
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-2">
+            {filtered.map((u, i) => (
+              <div key={i} className="p-3 rounded-lg border border-border/60 bg-card/50 hover:border-teal-500/30 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm leading-6">{u.name}</p>
+                    <p className="text-xs text-muted-foreground">{u.city || '—'}</p>
+                  </div>
+                  <Badge variant="secondary" className="text-[9px] px-1.5 py-0 shrink-0">{u.typeLabel}</Badge>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                    {fa(u.majorCount)} رشته‌محل
+                  </Badge>
+                  {u.groupKeys.map((gk) => {
+                    const g = GROUPS.find((g) => g.key === gk)!
+                    return (
+                      <Badge key={gk} variant="outline" className="text-[9px] px-1.5 py-0">
+                        {g.emoji} {g.label}
+                      </Badge>
+                    )
+                  })}
+                  {u.minCutoff < Infinity && (
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">
+                      رتبه: {faFmt(u.minCutoff)}–{faFmt(u.maxCutoff)}
+                    </Badge>
+                  )}
                 </div>
               </div>
-            )
-          })}
-          {filtered.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">دانشگاهی یافت نشد.</div>}
+            ))}
+          </div>
+          {filtered.length === 0 && (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              دانشگاهی یافت نشد.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -3406,99 +3986,86 @@ function MajorsView() {
   }, [majors, search, groupFilter])
 
   return (
-    <div className="space-y-4 mt-6">
+    <div className="space-y-4">
       <Card className="border-border/60">
-        <CardHeader><CardTitle className="text-base">رشته‌های دانشگاهی</CardTitle><CardDescription>کاتالوگ {fa(majors.length)} رشته دانشگاهی کنکور سراسری ۱۴۰۵</CardDescription></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MapPinIcon className="w-4 h-4 text-amber-500" />
+            رشته‌های دانشگاهی
+          </CardTitle>
+          <CardDescription>
+            کاتالوگ {fa(majors.length)} رشته دانشگاهی کنکور سراسری ۱۴۰۵
+          </CardDescription>
+        </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <div className="relative flex-1 min-w-[200px]"><Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" /><Input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جستجوی نام رشته..." aria-label="جستجو" className="pr-9 h-9" /></div>
-            <Select value={groupFilter} onValueChange={(v) => setGroupFilter(v as GroupKey | 'all')}><SelectTrigger className="h-9 w-[120px] text-xs" aria-label="فیلتر گروه"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">همه گروه‌ها</SelectItem>{GROUPS.map((g) => <SelectItem key={g.key} value={g.key}>{g.emoji} {g.label}</SelectItem>)}</SelectContent></Select>
-          </div>
-          <div className="text-xs text-muted-foreground mb-3">{fa(filtered.length)} رشته</div>
-          {/* Group by field category */}
-          {FIELD_CATEGORIES.map((cat) => {
-            const items = filtered.filter((m) => {
-              // Simple mapping: riazi/tajrobi → engineering/medical/basic-science, ensani → humanities/management/education, honar → art, zaban → language
-              if (cat.id === 'engineering' && (m.group === 'riazi')) return true
-              if (cat.id === 'medical' && m.group === 'tajrobi') return true
-              if (cat.id === 'humanities' && m.group === 'ensani') return true
-              if (cat.id === 'art' && m.group === 'honar') return true
-              if (cat.id === 'language' && m.group === 'zaban') return true
-              return false
-            })
-            if (items.length === 0) return null
-            return (
-              <div key={cat.id} className="mb-6">
-                <h2 className="text-sm font-bold text-[#1A2744] mb-1">{cat.title}</h2>
-                <p className="text-xs text-muted-foreground mb-3">{cat.description}</p>
-                <div className="grid sm:grid-cols-2 gap-2">
-                  {items.map((m, i) => {
-                    const desc = getMajorDescription(m.name)
-                    return (
-                      <div key={i} className="p-3 rounded-lg border border-border/60 bg-card/50 hover:border-[#0EA5A0]/30 transition-colors">
-                        <div className="flex items-start justify-between gap-2"><div className="flex-1 min-w-0"><p className="font-bold text-sm leading-6">{m.name}</p>{desc?.englishName && <p className="text-[10px] text-muted-foreground">{desc.englishName}</p>}</div></div>
-                        {desc?.intro && <p className="text-[11px] text-muted-foreground mt-1 leading-5">{desc.intro.substring(0, 120)}{desc.intro.length > 120 ? '...' : ''}</p>}
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{fa(m.universityCount)} دانشگاه</Badge>
-                          {m.cities.length > 0 && <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">{fa(m.cities.length)} شهر</Badge>}
-                          {m.minCutoff < Infinity && <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">رتبه: {faFmt(m.minCutoff)}–{faFmt(m.maxCutoff)}</Badge>}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-          {filtered.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">رشته‌ای یافت نشد.</div>}
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-// ───── Guides View (راهنمای انتخاب رشته) ─────
-function GuidesView() {
-  const [search, setSearch] = useState('')
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return GUIDES
-    return GUIDES.filter((g) => g.title.toLowerCase().includes(q) || g.excerpt.toLowerCase().includes(q))
-  }, [search])
-
-  // Group by category
-  const categories = useMemo(() => {
-    const map = new Map<string, { label: string; guides: typeof GUIDES }>()
-    for (const g of filtered) {
-      if (!map.has(g.category)) map.set(g.category, { label: g.categoryLabel, guides: [] })
-      map.get(g.category)!.guides.push(g)
-    }
-    return Array.from(map.values())
-  }, [filtered])
-
-  return (
-    <div className="space-y-4 mt-6">
-      <Card className="border-border/60">
-        <CardHeader><CardTitle className="text-base">راهنمای انتخاب رشته</CardTitle><CardDescription>{fa(GUIDES.length)} راهنمای انتخاب رشته</CardDescription></CardHeader>
-        <CardContent>
-          <div className="relative mb-4"><Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" /><Input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جستجوی راهنما..." aria-label="جستجو" className="pr-9 h-9" /></div>
-          <div className="text-xs text-muted-foreground mb-3">{fa(filtered.length)} راهنما</div>
-          {categories.map((cat, ci) => (
-            <div key={ci} className="mb-6">
-              <h2 className="text-sm font-bold text-[#1A2744] mb-1">{cat.label}</h2>
-              <div className="space-y-2">
-                {cat.guides.map((g, gi) => (
-                  <div key={gi} className="p-3 rounded-lg border border-border/60 bg-card/50 hover:border-[#0EA5A0]/30 transition-colors cursor-pointer">
-                    <h3 className="text-sm font-bold text-[#1A2744] mb-1">{g.title}</h3>
-                    <p className="text-xs text-muted-foreground leading-5">{g.excerpt}</p>
-                    <span className="text-[10px] text-[#0EA5A0] mt-1 inline-block">ادامه مطلب ←</span>
-                  </div>
-                ))}
-              </div>
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="جستجوی نام رشته..."
+                aria-label="جستجو"
+                className="pr-9 h-9"
+              />
             </div>
-          ))}
-          {filtered.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">راهنمایی یافت نشد.</div>}
+            <Select value={groupFilter} onValueChange={(v) => setGroupFilter(v as GroupKey | 'all')}>
+              <SelectTrigger className="h-9 w-[120px] text-xs" aria-label="فیلتر گروه">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه گروه‌ها</SelectItem>
+                {GROUPS.map((g) => (
+                  <SelectItem key={g.key} value={g.key}>{g.emoji} {g.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="text-xs text-muted-foreground mb-3">
+            {fa(filtered.length)} رشته
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-2">
+            {filtered.map((m, i) => (
+              <div key={i} className="p-3 rounded-lg border border-border/60 bg-card/50 hover:border-amber-500/30 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm leading-6">{m.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {m.groupEmoji} {m.groupLabel}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                    {fa(m.universityCount)} دانشگاه
+                  </Badge>
+                  {m.cities.length > 0 && (
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">
+                      {fa(m.cities.length)} شهر
+                    </Badge>
+                  )}
+                  {m.minCutoff < Infinity && (
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">
+                      رتبه: {faFmt(m.minCutoff)}–{faFmt(m.maxCutoff)}
+                    </Badge>
+                  )}
+                </div>
+                {m.cities.length > 0 && m.cities.length <= 5 && (
+                  <p className="text-[10px] text-muted-foreground mt-1.5">
+                    شهرها: {m.cities.join('، ')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          {filtered.length === 0 && (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              رشته‌ای یافت نشد.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -3507,32 +4074,70 @@ function GuidesView() {
 
 function Footer() {
   return (
-    <footer className="mt-auto border-t border-border/60 bg-background/80 print:hidden">
-      <div className="container mx-auto max-w-6xl px-4 py-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-center md:text-right">
-            <p className="text-sm font-semibold mb-1">تخمین رشته قبولی با رتبه کنکور ۱۴۰۵</p>
-            <p className="text-xs text-muted-foreground leading-6">
-              نرم افزار رایگان بر اساس کارنامه سال گذشته — خطای تخمینی کمتر از ۵٪.
+    <footer className="mt-auto bg-[#1A2744] text-white overflow-hidden print:hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
+          {/* Brand */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-10 h-10 rounded-xl overflow-hidden">
+                <img src="/sunjob-logo.png" alt="سان‌جاب" className="w-full h-full object-cover" />
+              </div>
+              <span className="text-xl font-extrabold">سان‌جاب</span>
+            </div>
+            <p className="text-gray-400 text-sm leading-6 mb-4">
+              سان‌جاب، همراه تو در مسیر کشف خود و ساخت آینده‌ای روشن. ما باور داریم انتخاب رشته، انتخاب یک مسیر زندگی است.
             </p>
+            <a
+              href="https://t.me/Sunjob1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 w-9 h-9 rounded-lg bg-white/10 hover:bg-[#0EA5A0]/20 transition-colors justify-center"
+            >
+              <Share2 className="w-4 h-4" />
+            </a>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <a href="https://www.heyvagroup.com/shownews/5535/" target="_blank" rel="noopener noreferrer">
-                <Share2 className="w-4 h-4 me-1.5" /> منبع اصلی
-              </a>
-            </Button>
-            <Button variant="ghost" size="sm">
-              <Github className="w-4 h-4 me-1.5" /> پروژه
-            </Button>
+          {/* Quick Access */}
+          <div>
+            <h4 className="text-sm font-bold mb-3 text-gray-300">دسترسی سریع</h4>
+            <ul className="space-y-2">
+              <li><a href="/" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">خانه</a></li>
+              <li><a href="/#philosophy" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">فلسفه ما</a></li>
+              <li><a href="https://t.me/Sunjob1" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">مشاوره انتخاب رشته</a></li>
+            </ul>
+          </div>
+          {/* Services */}
+          <div>
+            <h4 className="text-sm font-bold mb-3 text-gray-300">خدمات ما</h4>
+            <ul className="space-y-2">
+              <li><a href="/#tests" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">تست‌های خودشناسی</a></li>
+              <li><a href="/fields/riazi/" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">رشته‌های ریاضی</a></li>
+              <li><a href="/fields/tajrobi/" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">رشته‌های تجربی</a></li>
+              <li><a href="/fields/ensani/" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">رشته‌های انسانی</a></li>
+              <li><a href="/products/" className="text-gray-400 hover:text-[#0EA5A0] text-sm transition-all duration-200 hover:translate-x-[-2px]">پلن PRO انتخاب رشته</a></li>
+            </ul>
+          </div>
+          {/* Contact */}
+          <div>
+            <h4 className="text-sm font-bold mb-3 text-gray-300">ارتباط با ما</h4>
+            <ul className="space-y-2">
+              <li className="flex items-center gap-2 text-gray-400 text-sm">
+                <span className="text-[#9CA3AF]">تلگرام:</span>
+                <a href="https://t.me/Sunjob1" target="_blank" rel="noopener noreferrer" className="hover:text-[#0EA5A0] transition-colors">@Sunjob1</a>
+              </li>
+              <li className="flex items-center gap-2 text-gray-400 text-sm">
+                <span className="text-[#9CA3AF]">ایمیل:</span>
+                <a href="mailto:info@sunjob.ir" className="hover:text-[#0EA5A0] transition-colors">info@sunjob.ir</a>
+              </li>
+            </ul>
           </div>
         </div>
-        <Separator className="my-4" />
-        <p className="text-xs text-muted-foreground text-center leading-6" suppressHydrationWarning>
-          © {new Date().getFullYear()} — این نرم افزار یک بازسازی مستقل از روی نرم افزار «تخمین رشته قبولی با رتبه»
-          سایت هیوا است و هیچ وابستگی رسمی به سازمان سنجش یا مؤسسه هیوا ندارد. داده‌ها الگویی و بر اساس
-          رتبه‌های قبولی سال‌های گذشته تنظیم شده‌اند.
-        </p>
+        {/* Bottom bar */}
+        <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-gray-500 text-xs">
+            © {new Date().getFullYear()} تمامی حقوق برای SUNJOB محفوظ است. | کشف • تجربه • انتخاب
+          </p>
+        </div>
       </div>
     </footer>
   )
