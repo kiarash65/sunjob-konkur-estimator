@@ -932,6 +932,19 @@ export default function KonkurApp({ appData }: { appData: KonkurAppData }) {
                     </p>
                   </div>
 
+                  {/* Data-source disclaimer */}
+                  <div className="text-xs rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 leading-6 text-amber-700 dark:text-amber-300">
+                    {group === 'riazi' ? (
+                      <>
+                        <strong>داده واقعی:</strong> رتبه‌های قبولی گروه ریاضی از دفترچه پذیرش ۱۴۰۴ استخراج شده‌اند. برای سایر گروه‌ها و سهمیه‌های ویژه، دفترچه رسمی ۱۴۰۵ را بررسی کنید.
+                      </>
+                    ) : (
+                      <>
+                        <strong>تخمینی:</strong> رتبه‌های قبولی این گروه تخمینی هستند و صرفاً برای راهنمایی نمایش داده می‌شوند. پیش از انتخاب نهایی، حتماً دفترچه پذیرش ۱۴۰۴/۱۴۰۵ سازمان سنجش را ببینید.
+                      </>
+                    )}
+                  </div>
+
                   <Separator />
 
                   <div className="flex flex-col gap-2">
@@ -1175,12 +1188,12 @@ export default function KonkurApp({ appData }: { appData: KonkurAppData }) {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-teal-500" />
-                ۵ نوع سهمیه
+                ۳ نوع سهمیه (منطقه)
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground leading-7">
-                منطقه‌های ۱، ۲ و ۳ و همچنین سهمیه‌های ایثارگران ۵٪ و ۲۵٪.
+                منطقه‌های ۱، ۲ و ۳ بر اساس بومی‌گزینی. سهمیه‌های ویژه (ایثارگران و…) را باید با کارنامه رسمی و دفترچه پذیرش ۱۴۰۴/۱۴۰۵ بررسی کنید.
               </p>
             </CardContent>
           </Card>
@@ -1250,6 +1263,26 @@ export default function KonkurApp({ appData }: { appData: KonkurAppData }) {
                     بله. دکمه «اشتراک‌گذاری» لینک نتایج شما (با وضعیت فعلی فرم) را در کلیپ‌بورد کپی می‌کند.
                     هر کس با باز کردن این لینک، همان فرم و نتایج را می‌بیند. همچنین می‌توانید با علامت قلب،
                     رشته‌محل‌های مورد علاقه را در «علاقه‌مندی‌ها» ذخیره کنید (داده‌ها در مرورگر شما نگه‌داری می‌شوند).
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="f6">
+                  <AccordionTrigger className="text-right">
+                    ۶) چرا سهمیه ایثارگران در فرم نیست؟
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground leading-7 text-sm">
+                    در نسخه فعلی، داده واقعی قبولی ایثارگران (۵٪ و ۲۵٪) در دسترس نیست و نمایش عدد ساختگی
+                    می‌توانست گمراه‌کننده باشد. بنابراین این سهمیه از فرم حذف شده است. برای سهمیه‌های ویژه،
+                    کارنامه رسمی و دفترچه پذیرش ۱۴۰۴/۱۴۰۵ سازمان سنجش را ملاک قرار دهید.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="f7">
+                  <AccordionTrigger className="text-right">
+                    ۷) منبع داده‌ها چیست؟
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground leading-7 text-sm">
+                    رتبه‌های قبولی گروه ریاضی از دفترچه پذیرش ۱۴۰۴ استخراج شده‌اند (داده واقعی). سایر گروه‌ها
+                    (تجربی، انسانی، هنر، زبان) بر اساس الگوی رقابتی کنکور تخمین زده شده‌اند و صرفاً راهنما هستند.
+                    همیشه برای تصمیم نهایی به دفترچه رسمی ۱۴۰۵ مراجعه کنید.
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
