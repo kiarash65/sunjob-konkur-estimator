@@ -67,7 +67,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
-      <head>
+      <body
+        className={`antialiased bg-background text-foreground min-h-screen flex flex-col`}
+        style={{ fontFamily: 'Vazirmatn, sans-serif' }}
+      >
         {/* Vazirmatn font from jsdelivr CDN — loaded at runtime by the
             browser instead of via next/font/google which downloads at
             build time (the latter requires network access during build
@@ -81,11 +84,6 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css"
         />
-      </head>
-      <body
-        className={`antialiased bg-background text-foreground min-h-screen flex flex-col`}
-        style={{ fontFamily: 'Vazirmatn, sans-serif' }}
-      >
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
