@@ -6,6 +6,12 @@ import { ScrollSpyTOC, HeadingAnchor } from '@/components/site/doc/scroll-spy'
 import { GUIDES, getGuide, type GuideSection } from '@/lib/masir-content'
 import { GUIDE_CATEGORIES } from '@/lib/masir-content'
 
+// Render on-demand at runtime instead of pre-rendering all 24 guide
+// pages at build time (only one guide has full body content; the rest
+// are placeholders).
+export const dynamic = 'force-dynamic'
+export const revalidate = 3600
+
 export function generateStaticParams() {
   return GUIDES.map((g) => ({ slug: g.slug }))
 }

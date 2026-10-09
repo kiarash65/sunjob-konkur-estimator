@@ -7,6 +7,14 @@ import { MAJOR_DESCRIPTIONS, FIELD_CATEGORIES, getMajorDescription } from '@/lib
 import { getAllCatalogRows } from '@/lib/konkur-data'
 import { fa, faFmt } from '@/lib/konkur-shared'
 
+// Render on-demand at runtime instead of pre-rendering all slug
+// permutations at build time. This avoids the build pre-rendering 19
+// detail pages × 1444 catalog rows filtering, which was timing out the
+// preview deployment. (generateStaticParams kept so the routes are still
+// type-checked and discoverable.)
+export const dynamic = 'force-dynamic'
+export const revalidate = 3600
+
 export function generateStaticParams() {
   return MAJOR_DESCRIPTIONS.map((m) => ({ slug: m.slug }))
 }
