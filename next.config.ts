@@ -7,10 +7,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    // Lint is run separately via `bun run lint`; don't block the build.
-    ignoreDuringBuilds: true,
-  },
   reactStrictMode: false,
 };
 

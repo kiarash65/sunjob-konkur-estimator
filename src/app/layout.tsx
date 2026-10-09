@@ -1,17 +1,10 @@
 import type { Metadata } from "next";
-import { Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
-
-const vazirmatn = Vazirmatn({
-  subsets: ["arabic", "latin"],
-  variable: "--font-vazirmatn",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -74,9 +67,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
+      <head>
+        {/* Vazirmatn font from jsdelivr CDN — loaded at runtime by the
+            browser instead of via next/font/google which downloads at
+            build time (the latter requires network access during build
+            and breaks preview deployments that sandbox the build). */}
+        <link
+          rel="preconnect"
+          href="https://cdn.jsdelivr.net"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css"
+        />
+      </head>
       <body
-        className={`${vazirmatn.variable} antialiased bg-background text-foreground min-h-screen flex flex-col`}
-        style={{ fontFamily: 'var(--font-vazirmatn), sans-serif' }}
+        className={`antialiased bg-background text-foreground min-h-screen flex flex-col`}
+        style={{ fontFamily: 'Vazirmatn, sans-serif' }}
       >
         <ThemeProvider
           attribute="class"
