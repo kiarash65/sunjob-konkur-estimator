@@ -52,3 +52,5 @@ prompt
 server.log
 # Skills directory
 /skills/.zscripts/dev.pid
+/skills
+.zscripts/dev.pid
