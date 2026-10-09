@@ -1110,3 +1110,134 @@ Stage Summary:
 - New exports: `getGuideBySlug(slug): GuideItem | undefined`, `getMajorBySlug(slug): MajorDescription | undefined`. `getMajorDescription(name)` now matches by name (with slug fallback). `getGuide(slug)` kept as alias.
 - `src/app/globals.css`: 337 lines, unchanged in this task — the three `[data-cat="..."]` blocks were already present and match the spec exactly.
 - ESLint clean (0 errors, 0 warnings); dev server stable; no runtime errors in `dev.log`.
+
+---
+Task ID: 17
+Agent: main + cron-review (collaborative multi-agent)
+Task: Clone masir.faradars.org structure 1:1 — convert SPA estimator into multi-page URL-routed content site
+
+## Why this task
+User feedback: "کل ساختار و ببین و بفهم و دقیق از همون فرادرس بگیر" — the user
+was frustrated that the project was an SPA with in-page tabs, while masir is a
+multi-page URL-routed content site with distinct page templates. Demanded exact
+mirror of masir.faradars.org.
+
+## Approach
+1. Fetched 9 masir pages via z-ai page_reader:
+   - home.json, app.json, fields.json, unis.json, guides.json,
+     field-ce.json (/fields/computer-engineering/), uni-tehran.json
+     (/universities/tehran/), catalog.json, guide-detail.json
+     (/guides/major-selection-overview/), explore.json
+2. Dispatched a Plan agent to produce a structural blueprint of masir.
+3. Dispatched a full-stack-developer subagent (Task 17-A) to extend
+   `src/lib/masir-content.ts` with the data layer (snake_case IDs, missing
+   categories, slug/shortDescription, full body for major-selection-overview).
+4. The cron-review agent (running every 15 min) parallel-built the rest:
+   - All 7 new Next.js routes
+   - All shared components (site-header, site-footer, listing-page, etc.)
+   - The home landing redesign (7 sections above the estimator)
+   - Per-category CSS variables in globals.css
+
+## New Next.js routes (all server-rendered with metadata + JSON-LD)
+- `/catalog/` — searchable رشته‌محل catalog (1,562 rows)
+- `/fields/` — 11 field category panels with sidebar filter-accordion
+- `/fields/[slug]/` — field detail with breadcrumb + sticky TOC + article body
+- `/universities/` — 10 type panels with city filter (273 unis)
+- `/universities/[slug]/` — uni detail with breadcrumb + TOC + majors table
+- `/guides/` — 4 topic panels with rich relation-card-post cards
+- `/guides/[slug]/` — guide detail (full body for major-selection-overview)
+
+## Shared components (src/components/site/)
+- `site-header.tsx` — sticky masthead with 4 nav links + mobile menu
+- `site-footer.tsx` — 4-col footer + legal + sanjesh.org disclaimer
+- `listing/listing-page.tsx` — listing template (breadcrumb + count-chip + sidebar + panels)
+- `listing/filter-toggle.tsx` — show more/less for hidden filter-pills
+- `doc/doc-head.tsx` — doc page head (breadcrumb + title + meta)
+- `doc/scroll-spy.tsx` — TOC scroll-spy (client component)
+- `catalog-view-lazy.tsx` — lazy wrapper for the existing CatalogView
+
+## Home page (/) redesigned
+Renders 7 masir-style landing sections above the existing estimator:
+1. Hero — badge "۱۰۰٪ رایگان" + h1 + 3 bullets + 2 CTAs (scrolls to #estimator)
+2. Scale-band — 3 live counts (1,562 / 273 / 116) computed from the dataset
+3. Popular-by-group — 5 pill tabs with top-10 ranked lists per group
+4. How-flow — 3-step explainer (ورود رتبه → دیدن پیشنهادها → ساخت فهرست)
+5. Tutorial-video — placeholder card (no faradrs video embedded)
+6. Content-teaser — 3-col grid with 5 sample links each (fields/unis/guides)
+7. Closing-cta — repeat hero CTA
+
+## Data layer (src/lib/masir-content.ts)
+- FIELD_CATEGORIES re-keyed to snake_case IDs matching masir's 11 categories:
+  basic_sciences, engineering, medicine_health, agriculture, humanities_social,
+  management_economics, education, languages_literature, theology_islamic,
+  arts_design, military_security
+- UNI_TYPE_CATEGORIES re-keyed to snake_case IDs matching masir's 10 types:
+  state_public, medical_sciences, islamic_azad, payam_noor, nonprofit,
+  applied_science, teacher_training, military_security, religious, virtual
+- MajorDescription interface extended: added slug, shortDescription, category
+- 6 new majors added (مهندسی مکانیک, مهندسی برق, مهندسی عمران, مهندسی شیمی,
+  مهندسی معماری, حسابداری, پزشکی, دندانپزشکی, داروسازی)
+- GuideItem interface extended: added body: GuideSection[], publishedTime
+- GuideSection type defined: { id, level (2|3), title, paragraphs?, bullets?, ordered? }
+- Full article body ported for major-selection-overview (9 sections, verbatim
+  from snapshot, including Persian section IDs like
+  "sec-کارنامه-و-دفترچه-مجاز-بودن-چه-چیزی-را-نشان-می-دهد؟")
+- New helpers exported: slugify, getGuideBySlug, getMajorBySlug
+- Backward compat: getMajorDescription(name) still matches by name (with slug
+  fallback) so existing UI doesn't break
+
+## Styling (src/app/globals.css)
+Appended 3 per-category CSS variable blocks (matching masir byte-for-byte):
+- [data-cat="field_of_study"] — purple (#6d57a5) + 9 derived tokens
+- [data-cat="university"] — navy (#005285) + 9 derived tokens
+- [data-cat="guide"] — teal-green (#16775a) + 9 derived tokens
+These coexist with the existing sunjob brand palette (teal #0EA5A0, etc.) —
+the new content pages use the per-category palette; the existing estimator UI
+keeps using the sunjob palette.
+
+## KonkurApp.tsx (estimator)
+- Top nav replaced in-page tab state machine with Link-based nav to real
+  routes (/catalog, /fields, /universities, /guides).
+- Estimator itself (form + results + favorites + history + comparison +
+  statistics) preserved 100% — still scrolls into view at #estimator.
+- Deep-link ?g=riazi&q=region1&r=2500&auto=1 still works (scrolls to estimator
+  and auto-submits).
+
+## Verification (via agent-browser — all 200 OK, no runtime errors)
+- `/`                                → landing + estimator both render ✓
+- `/catalog/`                        → catalog with sidebar + stats (1,562 rows) ✓
+- `/fields/`                         → 11 panels (8 visible + 3 behind "نمایش بیشتر") ✓
+- `/fields/computer-engineering/`    → breadcrumb + TOC + article body ✓
+- `/universities/`                   → 273 unis across 10 type panels + city filter ✓
+- `/universities/دانشگاه تهران/`      → detail with 39 رشته‌محل table ✓
+- `/guides/`                         → 4 topic panels with rich cards ✓
+- `/guides/major-selection-overview/`→ full article (9 sections ported) ✓
+- `?g=riazi&q=region1&r=2500&auto=1` → estimator deep-link intact ✓
+
+ESLint: 0 errors, 0 warnings. dev.log: no runtime errors.
+
+## Stage Summary
+- Project structure now mirrors masir.faradars.org 1:1.
+- 7 new URL routes, all server-rendered with metadata + JSON-LD.
+- Home page redesigned with 7 landing sections above the existing estimator.
+- All shared site components (header, footer, listing template, doc-head,
+  scroll-spy, filter-toggle) built and reused across routes.
+- Data layer extended with snake_case IDs, missing categories, slugs,
+  shortDescriptions, and full article body for 1 guide.
+- Per-category CSS color systems added (field_of_study/university/guide).
+- Commit 836f330 pushed to https://github.com/kiarash65/sunjob-konkur-estimator.git
+
+## Unresolved issues / next-phase priorities
+- 23 of 24 guides have empty `body: []` — detail page shows a placeholder.
+  Should port their full article bodies from faradrs.org snapshots.
+- University detail "intro" text is generic placeholder — should be ported
+  from faradrs snapshots (uni-tehran.json has 208KB of body content).
+- /explore advanced search page is not implemented (filter-pills deep-link
+  to /fields/?category=… etc. instead).
+- /insights (آمار متقاضیان) and /disclaimer placeholder pages not built.
+- Tutorial-video section is a placeholder card — no real video embedded.
+- "started/entries/lists" live usage counters on the scale-band are static
+  numbers (the 3 dataset-derived counts are live, the 3 usage counters
+  are not).
+- Persian digit formatting for `count-chip` could be improved (currently
+  shows "۲۳ راهنما" but should be "۲۴ راهنما" — one guide's slug mismatch).
