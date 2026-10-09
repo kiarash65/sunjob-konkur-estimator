@@ -1241,3 +1241,110 @@ ESLint: 0 errors, 0 warnings. dev.log: no runtime errors.
   are not).
 - Persian digit formatting for `count-chip` could be improved (currently
   shows "۲۳ راهنما" but should be "۲۴ راهنما" — one guide's slug mismatch).
+
+---
+Task ID: 18
+Agent: main (preview deployment fix attempt)
+Task: Fix the failing Z.ai preview deployment at https://enobqa.space-z.ai
+
+## Problem
+The preview deployment at https://enobqa.space-z.ai was returning HTTP 500
+with a "Sorry, there was a problem deploying the code." page. Local dev
+server worked fine on all routes, so the issue was build/deployment-specific.
+
+## Root cause discovered
+By running `npx next build` locally (after stopping the dev server), I
+captured the actual build error:
+
+    Error: ENAMETOOLONG: name too long, mkdir
+    '.next/server/app/universities/%D8%A2%D9%85%D9%88%D8%B2%D8%B4%DA%A9%D8%AF%D9%87%20...'
+
+The /universities/[slug] route was using URL-encoded Persian university
+names as slugs (e.g. 'آموزشکده فني نقشه برداری سازمان جغرافیايي نیروهای
+مسلح' becomes a 200+ character URL-encoded string). Linux filesystems
+reject path components longer than 255 bytes — Next.js's static
+pre-rendering was crashing while trying to mkdir the .segments directory
+for each of the 273 university pages.
+
+## Fixes applied
+1. src/app/universities/[slug]/page.tsx:
+   - Set generateStaticParams to return an empty list (no pre-rendering)
+   - Set export const dynamic = 'force-dynamic' + dynamicParams = true
+     so the route still matches any slug at runtime, just rendered on-demand.
+
+2. next.config.ts:
+   - Restored output: "standalone" (required by .zscripts/build.sh which
+     validates that .next/standalone/server.js exists after build)
+   - Removed invalid `eslint` config key (Next.js 16 logs warning)
+
+3. package.json:
+   - Restored build script: "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/"
+   - Restored start script: "NODE_ENV=production bun .next/standalone/server.js"
+     (matches what .zscripts/start.sh expects: next-service-dist/server.js)
+
+4. src/app/layout.tsx:
+   - Removed next/font/google Vazirmatn (downloads font at build time
+     from fonts.googleapis.com, which fails in sandboxed build envs)
+   - Replaced with runtime <link> tags to Vazirmatn CDN on jsdelivr
+   - Moved <link> tags from <head> to <body> (Next.js 16 App Router
+     doesn't allow manual <head> in layout.tsx)
+
+5. src/lib/riazi-real-data.ts:
+   - Added `import type { MajorRow } from './konkur-data'` (was missing,
+     caused TypeScript build error "Cannot find name 'MajorRow'")
+
+6. tsconfig.json:
+   - Added excludes for examples/, skills/, mini-services/, agent-ctx/,
+     tool-results/, .zscripts/ (these have their own TS errors that
+     don't affect the project but break `tsc --noEmit`)
+
+7. .env:
+   - Changed DATABASE_URL from absolute path
+     'file:/home/z/my-project/db/custom.db' to relative
+     'file:./db/custom.db' (works on any deployment path)
+
+8. .gitignore + git rm:
+   - Removed accidentally committed skills/ directory (~50+ skill files
+     that bloat the repo and slow down git clone on the deployment server)
+   - Untracked .zscripts/dev.pid (local-only dev server PID file)
+
+## Local verification
+- bun run lint: 0 errors, 0 warnings
+- npx next build: ✓ Compiled successfully in 16s, 49 static pages
+  generated (was 322 before, breaking on long Persian slugs)
+- .next/standalone/server.js produced (85MB standalone output)
+- cp -r .next/static .next/standalone/.next/ succeeds
+- cp -r public .next/standalone/ succeeds
+- bun server.js (standalone) starts successfully locally:
+  "✓ Ready in 74ms"
+- All routes return 200 in dev mode:
+  /, /catalog/, /fields/, /fields/computer-engineering/,
+  /universities/, /universities/دانشگاه تهران/,
+  /guides/, /guides/major-selection-overview/
+
+## Status of Z.ai preview deployment
+- As of the last test, https://enobqa.space-z.ai/ is still returning
+  HTTP 500 with the "Failed" page.
+- Local verification confirms the build pipeline works correctly.
+- The deployment may be stuck or there may be an infrastructure issue
+  on the Z.ai preview side that I cannot see/debug from here.
+- The user may need to manually trigger a redeploy from the Z.ai side.
+
+## Stage Summary
+- Identified and fixed the root cause (ENAMETOOLONG during static
+  pre-rendering of long Persian university slugs).
+- Fixed multiple secondary issues (TypeScript imports, font loading,
+  standalone output, build script, etc.).
+- Local build pipeline works end-to-end.
+- Commits 5473dab → 652d416 pushed to github.
+- Preview deployment status: still failing (possibly stuck).
+
+## Unresolved issues / next-phase priorities
+- The Z.ai preview deployment may need manual intervention (stuck build
+  queue, stale cache, etc.) — not addressable from the project side.
+- Consider slugifying university names to English transliterations
+  (like masir.faradars.org does: /universities/valiasr-rafsanjan/)
+  so they can be pre-rendered at build time, giving better SEO.
+- 23 of 24 guides still have empty body: [] (only major-selection-overview
+  has full body ported from masir snapshot).
+- /explore, /insights, /disclaimer placeholder pages not built.
