@@ -11,13 +11,21 @@ import {
 } from '@/lib/konkur-data'
 import { fa, faFmt } from '@/lib/konkur-shared'
 
-// Render on-demand at runtime instead of pre-rendering all 273 university
-// pages at build time. Each page filters 1444 catalog rows, which would
-// time out the preview deployment.
+// CRITICAL: This route MUST be force-dynamic. The slug is the URL-encoded
+// Persian university name (e.g. "آموزشکده فني نقشه برداری سازمان جغرافیايي
+// نیروهای مسلح" → 200+ chars when URL-encoded). Pre-rendering at build
+// time hits the filesystem's ENAMETOOLONG error when Next.js tries to
+// mkdir the .segments directory under .next/server/app/universities/[slug].
+// force-dynamic makes Next.js render on-demand at runtime instead.
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
 
+// Return an EMPTY list — we don't want to pre-render any of the 273
+// university pages (the slugs are too long for the filesystem).
+// dynamicParams=true (default) allows the route to still match any slug
+// at runtime, just without pre-rendering.
 export function generateStaticParams() {
-  // Pre-render a page for each known university name (URL-encoded as slug).
-  return getAllUniversities().map((u) => ({ slug: encodeURIComponent(u.name) }))
+  return []
 }
 
 interface PageProps {
