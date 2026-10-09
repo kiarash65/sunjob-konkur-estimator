@@ -1085,3 +1085,28 @@ UI fixes to the new structure.
   roughly 2× too low (e.g., پزشکی تهران region1 = ۳۵۰ in code vs ~۱۵۰ real).
   Could be fixed in a follow-up if the user reports issues with those groups.
 - Long-term: ingest real PDF data for all 5 groups, not just Riazi.
+
+---
+Task ID: 17-A
+Agent: full-stack-developer (data layer + CSS)
+Task: Extend masir-content.ts (snake_case IDs, missing categories, slug/shortDescription, full body for major-selection-overview) + add per-category CSS vars to globals.css
+
+Work Log:
+- Pre-flight: read worklog (Tasks 1-16 about konkur estimator), inspected current `masir-content.ts` (756 lines — already partially extended by a prior pass with 11 snake_case field categories incl. `theology_islamic`, 10 snake_case uni types, 18 MajorDescription entries with slug+category+shortDescription, GuideSection/GuideItem interfaces with body+publishedTime, 24 guides with `body: []` placeholders). Confirmed the pre-flight snapshot files at `/tmp/masir-snapshot/*.json`.
+- Wrote a Python HTML parser (`.tmp-extract/extract_body.py`, cleaned up after) that reads `/tmp/masir-snapshot/guide-detail.json`'s article body, walks the `<h2>/<h3>/<p>/<ul>/<ol>/<li>/<figure>/<figcaption>` tree, and emits a TypeScript array literal of `GuideSection` objects. Bug-fixed three iterations: (a) `nonlocal` → module-level dict; (b) keep the "active section" reference past the heading close tag so following p/ul/ol attach to it; (c) ignore `<p>` nested inside `<li>` so bullets aren't double-counted as paragraphs; (d) suppress `<figure>`/`<figcaption>` text (was leaking captions into adjacent paragraphs). Final parser output: 9 sections matching the snapshot exactly (6× level 2, 3× level 3, 1× `ordered: true` on section 6 "مراحل...").
+- Spliced the verbatim 9-section body into `major-selection-overview` in `masir-content.ts`. The first splice attempt had an off-by-one: the body-array-close detector matched the FIRST `],` (which was section 1's paragraphs close at 8-space indent) instead of the body array close at 4-space indent. Wrote a cleanup pass (`.tmp-extract/cleanup.py`) that finds the chklist section's `},` close (6-space indent) and the next `],` (4-space indent) and deletes the 106 orphaned lines between them. Final body is a clean verbatim port.
+- Added `getGuideBySlug(slug: string): GuideItem | undefined` (returns `undefined`, not `null`, per spec). Kept `getGuide(slug)` as a thin alias (`return getGuideBySlug(slug) ?? null`) so the existing `/app/guides/[slug]/page.tsx` caller still works unchanged.
+- Added `getMajorBySlug(slug: string): MajorDescription | undefined`.
+- Fixed `getMajorDescription(name: string)` to match by `name` first (per spec: "should still match by name"), with a slug fallback (`?? find by slug`) so the existing `/app/fields/[slug]/page.tsx` caller (which passes a slug) still works until the next agent migrates it to `getMajorBySlug`. `getMajorByName(name)` left untouched for `/app/universities/[slug]/page.tsx`.
+- Per-category CSS variables: confirmed the three `[data-cat="..."]` blocks (`field_of_study` purple, `university` blue, `guide` teal) are already present in `globals.css` at lines 302-316, matching the spec colors byte-for-byte. No duplicate added. (The previous pass also added `.u-type-*` convenience utilities and `.toc-link-active` — left untouched as they're harmless and useful for the next agents.)
+- Verification:
+  - `bun run lint`: 0 errors, 0 warnings (clean).
+  - `bun run verify-masir.ts` (temp script, deleted after): `getGuideBySlug('major-selection-overview')` returns guide with `body.length === 9`; first section id is `sec-نقطه-آغاز-تصمیم` (verbatim from snapshot); section 6 has `ordered: true`; `getMajorBySlug('computer-engineering')` returns the major with `category: 'engineering'`; `getMajorDescription('مهندسی کامپیوتر')` (by name) returns `slug: 'computer-engineering'`; `slugify('Electrical and Electronic Engineering')` → `'electrical-and-electronic-engineering'`.
+  - `dev.log` tail: `/guides/major-selection-overview/` 200, `/fields/computer-engineering/` 200, `/` 200 — no runtime errors after the file changes were picked up.
+- Counts in final file: 11 field categories (incl. `theology_islamic`), 10 uni types (incl. `religious`, `virtual`, `military_security`), 18 MajorDescription entries (10 original + 8 added popular majors covering all 9 the spec required: مکانیک/برق/عمران/شیمی/معماری/حسابداری + پزشکی/دندانپزشکی/داروسازی, plus صنایع/پرستاری/گرافیک/آموزش ابتدایی/مترجمی as bonus), 24 guides (23 with `body: []`, 1 with full 9-section body), 1 `ordered: true`, 6 level-2 + 3 level-3 sections.
+
+Stage Summary:
+- `src/lib/masir-content.ts`: 793 lines (was 756 before this task, was 106 in committed HEAD). The `major-selection-overview` guide now carries a verbatim 9-section port of the masir article body (6× h2 + 3× h3, with `ordered: true` on the `<ol>` section "مراحل انتخاب رشته و فرصت‌های ویرایش"). All 9 section ids copied verbatim from the snapshot's `<h2 id="...">` / `<h3 id="...">` attributes, including the Persian+ punctuation characters (e.g. `sec-کارنامه-و-دفترچه-مجاز-بودن-چه-چیزی-را-نشان-می-دهد؟`, `sec-کارنامه-و-دفترچه-دفترچه-راهنما،-مرجع-اصلی`).
+- New exports: `getGuideBySlug(slug): GuideItem | undefined`, `getMajorBySlug(slug): MajorDescription | undefined`. `getMajorDescription(name)` now matches by name (with slug fallback). `getGuide(slug)` kept as alias.
+- `src/app/globals.css`: 337 lines, unchanged in this task — the three `[data-cat="..."]` blocks were already present and match the spec exactly.
+- ESLint clean (0 errors, 0 warnings); dev server stable; no runtime errors in `dev.log`.

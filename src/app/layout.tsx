@@ -4,6 +4,8 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SiteHeader } from "@/components/site/site-header";
+import { SiteFooter } from "@/components/site/site-footer";
 
 const vazirmatn = Vazirmatn({
   subsets: ["arabic", "latin"],
@@ -12,7 +14,10 @@ const vazirmatn = Vazirmatn({
 });
 
 export const metadata: Metadata = {
-  title: "تخمین رشته‌محل قبولی کنکور ۱۴۰۵ با رتبه | سان‌جاب",
+  title: {
+    default: "تخمین رشته‌محل قبولی کنکور ۱۴۰۵ با رتبه | سان‌جاب",
+    template: "%s | سان‌جاب",
+  },
   description:
     "سان‌جاب — نرم افزار رایگان تخمین رشته‌محل قبولی با رتبه کنکور سراسری ۱۴۰۵. گروه، سهمیه و رتبه خود را وارد کنید تا فهرست رشته‌محل‌های پیشنهادی را در سه دسته خوش‌بینانه، منطقی و بدبینانه ببینید.",
   keywords: [
@@ -70,7 +75,7 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
       <body
-        className={`${vazirmatn.variable} antialiased bg-background text-foreground`}
+        className={`${vazirmatn.variable} antialiased bg-background text-foreground min-h-screen flex flex-col`}
         style={{ fontFamily: 'var(--font-vazirmatn), sans-serif' }}
       >
         <ThemeProvider
@@ -79,7 +84,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <SiteHeader />
+          <main id="main" className="flex-1">{children}</main>
+          <SiteFooter />
           <Toaster />
           <SonnerToaster position="bottom-center" richColors closeButton dir="rtl" />
         </ThemeProvider>

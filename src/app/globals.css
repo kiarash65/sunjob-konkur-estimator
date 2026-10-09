@@ -293,4 +293,45 @@ a:focus-visible {
 .custom-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 
+/* ─── Per-category CSS color systems (verbatim from masir.faradars.org) ───
+   These define a "type color" family for the masir-style content pages
+   (/fields, /universities, /guides and their [slug] detail pages). The
+   estimator UI on `/` keeps the sunjob teal palette; only the content
+   pages wrap themselves in a [data-cat] scope and use these variables. */
+
+[data-cat="field_of_study"] {
+  --type-color: #6d57a5; --c-dark: #594589;
+  --c-panel: #f2eeff; --c-tile: #e9e3ff; --c-wash: #f7f5fe; --c-on: #fbfaff;
+  --c-border: #d9d2f5; --c-chip: #d0c8ef; --c-shadow: rgba(109,87,165,.14);
+}
+[data-cat="university"] {
+  --type-color: #005285; --c-dark: #003f6b;
+  --c-panel: #e5f3ff; --c-tile: #d4ebff; --c-wash: #f0f8ff; --c-on: #f8fcff;
+  --c-border: #bedbf6; --c-chip: #b2d3f0; --c-shadow: rgba(0,82,133,.14);
+}
+[data-cat="guide"] {
+  --type-color: #16775a; --c-dark: #066148;
+  --c-panel: #e3f7ee; --c-tile: #d1f1e3; --c-wash: #f0faf5; --c-on: #f7fcfa;
+  --c-border: #bae2d1; --c-chip: #addac7; --c-shadow: rgba(22,119,90,.14);
+}
+
+/* Convenience utility classes that consume the per-category variables above.
+   They are no-ops outside a [data-cat] scope (the var falls back to the
+   sunjob brand palette via var(--color-...)). */
+.u-type-color { color: var(--type-color, var(--primary)); }
+.u-type-bg { background-color: var(--c-panel, var(--secondary)); }
+.u-type-border { border-color: var(--c-border, var(--border)); }
+.u-type-tile { background-color: var(--c-tile, var(--secondary)); }
+.u-type-chip {
+  background-color: var(--c-chip, var(--secondary));
+  color: var(--c-dark, var(--foreground));
+}
+
+/* Sticky scroll-spy active link style for the TOC sidebar on detail pages. */
+.toc-link-active {
+  color: var(--type-color, var(--primary));
+  font-weight: 700;
+  border-inline-start: 2px solid var(--type-color, var(--primary));
+}
+
 
