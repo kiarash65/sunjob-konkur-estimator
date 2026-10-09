@@ -9,6 +9,13 @@ import {
   type GroupKey,
 } from '@/lib/konkur-data'
 
+// Home page imports the full 1444-entry dataset (290KB) to compute the
+// stats (catalog count / uni count / major count) and to pass sample
+// lists to the client. Render on-demand at runtime to avoid pre-rendering
+// a huge static HTML file at build time.
+export const dynamic = 'force-dynamic'
+export const revalidate = 3600
+
 /**
  * Server page for the estimator route (kept at `/` as before).
  *

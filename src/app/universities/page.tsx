@@ -5,6 +5,12 @@ import { UNI_TYPE_CATEGORIES, mapUniType } from '@/lib/masir-content'
 import { getAllUniversities } from '@/lib/konkur-data'
 import { fa } from '@/lib/konkur-shared'
 
+// Universities listing iterates through the full 1444-entry dataset to
+// derive the 273 unique universities. Render on-demand to avoid
+// pre-rendering a huge HTML file.
+export const dynamic = 'force-dynamic'
+export const revalidate = 3600
+
 export const metadata: Metadata = {
   title: 'دانشگاه‌ها و مراکز آموزش عالی | سان‌جاب',
   description: 'فهرست کامل دانشگاه‌ها و مراکز آموزش عالی ایران به تفکیک نوع دانشگاه (دولتی، آزاد، پیام نور، غیرانتفاعی، علمی‌کاربردی و فرهنگیان) و شهر.',
