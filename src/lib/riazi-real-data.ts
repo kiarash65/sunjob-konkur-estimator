@@ -1,5 +1,9 @@
 // Real Konkur data from PDF (ریاضی group, 1404)
 // Total: 1444 entries, 72 unique majors
+// Type is imported as a type-only import to avoid a runtime circular
+// dependency (konkur-data.ts imports RIAZI_REAL from this file).
+import type { MajorRow } from './konkur-data';
+
 export const RIAZI_REAL: MajorRow[] = [
     { major: 'اقتصاد', university: 'دانشگاه تهران', universityType: 'dolati', city: 'تهران', cutoffs: { region2: 1298 } },
     { major: 'اقتصاد', university: 'دانشگاه مازندران - بابلسر', universityType: 'dolati', city: 'بابلسر', cutoffs: { region2: 16377 } },
