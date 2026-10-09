@@ -12,8 +12,6 @@ import { fa, faFmt } from '@/lib/konkur-shared'
 // detail pages × 1444 catalog rows filtering, which was timing out the
 // preview deployment. (generateStaticParams kept so the routes are still
 // type-checked and discoverable.)
-export const dynamic = 'force-dynamic'
-export const revalidate = 3600
 
 export function generateStaticParams() {
   return MAJOR_DESCRIPTIONS.map((m) => ({ slug: m.slug }))

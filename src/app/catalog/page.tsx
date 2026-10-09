@@ -24,8 +24,6 @@ import {
 // to compute the count, and lazily loads CatalogView (which also imports
 // the dataset) on the client. Pre-rendering this at build time creates a
 // large static HTML file. Render on-demand instead.
-export const dynamic = 'force-dynamic'
-export const revalidate = 3600
 
 export const metadata: Metadata = {
   title: 'فهرست رشته‌محل‌های کنکور ۱۴۰۴ | سان‌جاب',

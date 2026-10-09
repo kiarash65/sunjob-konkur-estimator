@@ -14,8 +14,6 @@ import { fa, faFmt } from '@/lib/konkur-shared'
 // Render on-demand at runtime instead of pre-rendering all 273 university
 // pages at build time. Each page filters 1444 catalog rows, which would
 // time out the preview deployment.
-export const dynamic = 'force-dynamic'
-export const revalidate = 3600
 
 export function generateStaticParams() {
   // Pre-render a page for each known university name (URL-encoded as slug).
