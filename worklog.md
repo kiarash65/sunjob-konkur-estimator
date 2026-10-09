@@ -1007,3 +1007,81 @@ Added 3 new functional views with navigation tabs:
 - Quick-access cards clickable → navigate to respective view
 - Returning to estimator shows form correctly
 - ESLint clean, no runtime errors
+
+---
+Task ID: 16
+Agent: main (continuation — re-apply fix on refactored codebase)
+Task: Re-apply انسانی/ایثارگران fix on top of the refactored (lazy-component) codebase from origin/main
+
+## Why this Task ID 16 exists
+After Task ID 15 was committed locally, a `git push` was rejected because origin/main had
+advanced (commits `ee6835e` → `b830ac4` on remote) with a major refactor:
+- `src/app/page.tsx` was split into lazy-loaded components under `src/components/konkur/`
+  (CatalogView, CompareView, FavsPanel, GuidesView, HistoryPanel, KonkurApp, MajorsView,
+  ResultCharts, ResultView, StatisticsCard, UniversitiesView).
+- framer-motion was removed in favor of CSS transitions.
+- A 5th tab «راهنماها» (Guides) was added.
+- JSON-LD + canonical link added.
+
+The clean fix path was: `git reset --hard origin/main` then re-apply the same data +
+UI fixes to the new structure.
+
+## Re-applied changes (same as Task 15 but on refactored code)
+
+### 1. src/lib/konkur-data.ts
+- Header comment added explaining data-source policy.
+- `QuotaKey` type narrowed from `"region1" | "region2" | "region3" | "eythar5" | "eythar25"`
+  to `"region1" | "region2" | "region3"`.
+- Removed the two Isargaran entries from `QUOTAS` array.
+- Bulk-purged all `eythar5`/`eythar25` cutoffs from RIAZI, TAJROBI, ENSANI, HONAR, ZABAN
+  arrays (178 occurrences) using `sed -i -E 's/, eythar5: [0-9]+, eythar25: [0-9]+(\s*\})/\1/g'`.
+- Rewrote the entire ENSANI (Humanities) block — 35 entries — with realistic estimates
+  matching the publicly-known competitive landscape of Konkur humanities (rights تهران
+  region1 ~۷۲۰۰ vs. the previous ۱۵۰۰, etc.).
+- Added a header comment to ENSANI noting these are estimates and pointing to the
+  official دفترچه پذیرش ۱۴۰۴/۱۴۰۵ as authoritative.
+
+### 2. src/components/konkur/KonkurApp.tsx
+- Stats card text: `۵ نوع سهمیه` → `۳ نوع سهمیه (منطقه)`. Description updated to
+  note سهمیه‌های ویژه should be checked in the official دفترچه.
+- Added a per-form data-source disclaimer banner (amber) between رتبه input and
+  the Separator/submit button. Uses `group === 'riazi'` check: shows «داده واقعی»
+  badge for Riazi and «تخمینی» badge for other groups.
+- Added 2 new FAQ items:
+  - `f6`: «چرا سهمیه ایثارگران در فرم نیست؟» — explains Isargaran was removed because
+    real data is unavailable and showing fabricated numbers would mislead users.
+  - `f7`: «منبع داده‌ها چیست؟» — explains Riazi = real PDF data ۱۴۰۴, other groups
+    = estimated.
+
+### 3. src/app/api/download-html/route.ts
+- Info card: `۵ نوع سهمیه` → `۳ نوع سهمیه (منطقه)`. Description updated to mention
+  دفترچه پذیرش ۱۴۰۴/۱۴۰۵ for special quotas.
+
+## Verification
+- `bun run lint`: clean (no errors, no warnings).
+- `agent-browser open '?g=ensani&q=region1&r=8000&auto=1'`:
+  - Quota selector shows only 3 options (no Isargaran). ✓
+  - Amber disclaimer shows «تخمینی: رتبه‌های قبولی این گروه تخمینی هستند…». ✓
+  - Stats card shows «۳ نوع سهمیه (منطقه)». ✓
+  - Buckets: خوش‌بینانه(۰) منطقی(۳) بدبینانه(۳۲). ✓
+  - FAQ items #6 and #7 visible. ✓
+- `agent-browser open '?g=riazi&q=region1&r=2500&auto=1'`:
+  - Amber disclaimer shows «داده واقعی: رتبه‌های قبولی گروه ریاضی از دفترچه پذیرش ۱۴۰۴ استخراج شده‌اند…». ✓
+  - Buckets: خوش‌بینانه(۸۷) منطقی(۲۷) بدبینانه(۵۱۵) — unchanged from before, confirming
+    the real PDF data is intact. ✓
+- `dev.log`: no runtime errors. ✓
+- Committed as `2c2ed20` and pushed to `origin/main` successfully.
+
+## Stage Summary
+- User-reported bugs in انسانی (Humanities) and ایثارگران (Isargaran) are now fixed
+  on the refactored codebase.
+- All previously-working features on the refactored codebase (lazy components, 5th
+  «راهنماها» tab, JSON-LD, canonical link) remain intact.
+- ESLint clean; dev server stable; no runtime errors.
+- Commit `2c2ed20` pushed to https://github.com/kiarash65/sunjob-konkur-estimator.git
+
+## Unresolved issues / next-phase priorities
+- Same as Task 15: تجربی، هنر، زبان still use fabricated cutoffs; Tajrobi numbers are
+  roughly 2× too low (e.g., پزشکی تهران region1 = ۳۵۰ in code vs ~۱۵۰ real).
+  Could be fixed in a follow-up if the user reports issues with those groups.
+- Long-term: ingest real PDF data for all 5 groups, not just Riazi.
